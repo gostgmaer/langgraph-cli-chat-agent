@@ -13,6 +13,7 @@
 from typing import Annotated, TypedDict
 
 from langgraph.graph.message import add_messages
+from langgraph.graph import MessagesState
 from langchain_core.messages import BaseMessage
 
 
@@ -20,3 +21,7 @@ class AgentState(TypedDict):
     """Shared state flowing through the graph."""
 
     messages: Annotated[list[BaseMessage], add_messages]
+
+class GraphState(MessagesState):
+    """Shared state for the AI Agent."""
+    pass
