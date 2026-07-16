@@ -8,3 +8,20 @@
 # TODO: Define `planner_node` — break task into sub-steps
 # TODO: Define `error_node` — handle and format errors
 # ============================================================
+
+
+from langchain_core.messages import AIMessage
+from core.graph.state import GraphState
+from core.llm.manager import LLMManager
+
+
+def create_chatbot_node(
+    llm: LLMManager,
+):
+    def chatbot_node(
+        state: GraphState,
+    ):
+        messages = state["messages"]
+        response = llm.invoke(messages)
+        return {"messages": [AIMessage(content=response.content)]}
+    return chatbot_node
