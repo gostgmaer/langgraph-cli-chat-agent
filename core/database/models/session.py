@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime
+from sqlalchemy import Boolean, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database.base import Base
@@ -12,12 +12,10 @@ class SessionModel(Base):
     __tablename__ = "sessions"
     from datetime import datetime, UTC
 
-    default=lambda: datetime.now(UTC)
+    default = lambda: datetime.now(UTC)
     id: Mapped[str] = mapped_column(primary_key=True)
 
-    title: Mapped[str] = mapped_column(
-        nullable=False
-    )
+    title: Mapped[str] = mapped_column(nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
@@ -29,5 +27,10 @@ class SessionModel(Base):
         DateTime,
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
         nullable=False,
     )

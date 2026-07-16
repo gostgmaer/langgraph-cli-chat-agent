@@ -1,18 +1,22 @@
-from core.database.db import AsyncSessionLocal
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from core.database.repositories.session_repository import SessionRepository
+from core.graph.checkpointer import Checkpointer
 from core.llm.manager import llm
-from core.memory.history import HistoryManager
 from core.memory.session import SessionManager
 from services.chat_service import ChatService
 
 
-async def create_chat_service() -> ChatService:
-    session = AsyncSessionLocal()
-    session_repository = SessionRepository(session)
+async def create_chat_service(
+    db_session: AsyncSession,
+    checkpoint_manager: Checkpointer,
+) -> ChatService:
+    session_repository = SessionRepository(db_session)
     session_manager = SessionManager(session_repository)
-    history_manager = HistoryManager()
+
     return ChatService(
         llm=llm,
         session_manager=session_manager,
-        history_manager=history_manager,
+        checkpointer=checkpoint_manager.checkpointer,
+        checkpoint_manager=checkpoint_manager,
     )

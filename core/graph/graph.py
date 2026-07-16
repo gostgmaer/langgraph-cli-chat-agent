@@ -9,11 +9,13 @@ from core.tools.news import get_news
 from core.tools.search import get_google_search
 from core.tools.weather import get_weather
 from langgraph.prebuilt import tools_condition
-
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+from langgraph.checkpoint.base import BaseCheckpointSaver
 
 class GraphBuilder:
-    def __init__(self, llm: LLMManager):
+    def __init__(self, llm: LLMManager, checkpointer: BaseCheckpointSaver):
         self._llm = llm
+        self._checkpointer = checkpointer
 
     def build(self):
         # 1. Create StateGraph
@@ -41,6 +43,8 @@ class GraphBuilder:
             "chatbot",
         )
         # 5. Compile
-        graph = builder.compile()
+        # checkpointer = AsyncSqliteSaver()
+        # builder.set_checkpointer(checkpointer)
+        graph = builder.compile(checkpointer=self._checkpointer)
         # 6. Return compiled graph
         return graph

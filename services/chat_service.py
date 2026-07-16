@@ -7,13 +7,15 @@
 # TODO: Return final assistant message to caller
 # ============================================================
 
-from langchain.messages import AIMessage
+from langchain.messages import AIMessage, HumanMessage
 from langchain_core.messages import BaseMessage
+from requests import session
 
 from core.database.repositories.session_repository import SessionRepository
 from core.llm.formatter import LLMResponseFormatter
 from core.llm.manager import LLMManager, llm
-from core.memory.history import HistoryManager
+
+# from core.memory.history import HistoryManager
 from core.memory.session import SessionManager
 from shared.logger import logger
 from core.graph.graph import GraphBuilder
@@ -26,14 +28,16 @@ class ChatService:
         self,
         llm: LLMManager,
         session_manager: SessionManager,
-        history_manager: HistoryManager,
+        # history_manager: HistoryManager,
+        checkpointer,
+        checkpoint_manager,
     ) -> None:
 
         self._session_manager = session_manager
-        self._history_manager = history_manager
-        self._graph = GraphBuilder(
-            llm,
-        ).build()
+        self._checkpoint_manager = checkpoint_manager
+        # self._history_manager = history_manager
+        self._checkpointer = checkpointer
+        self._graph = GraphBuilder(llm, checkpointer=checkpointer).build()
 
     async def chat(self, user_message: str) -> BaseMessage:
         """Process a user message and return the assistant response."""
@@ -51,18 +55,21 @@ class ChatService:
         logger.debug("Using session %s", session.id)
 
         # 3. Save user message
-        self._history_manager.add_user_message(
-            session.id,
-            user_message,
-        )
+        # self._history_manager.add_user_message(
+        #     session.id,
+        #     user_message,
+        # )
 
         # 4. Load conversation history
-        messages = self._history_manager.get_messages(session.id)
+        # messages = self._history_manager.get_messages(session.id)
+        messages = [
+            HumanMessage(content=user_message),
+        ]
 
-        logger.debug(
-            "Executing LangGraph with %d messages.",
-            len(messages),
-        )
+        # logger.debug(
+        #     "Executing LangGraph with %d messages.",
+        #     len(messages),
+        # )
 
         # Debug (remove later)
         # for message in messages:
@@ -70,10 +77,21 @@ class ChatService:
 
         # 5. Invoke LLM
         logger.debug("Processing user message...")
+        config = {
+            
+                "configurable": {
+                    "thread_id": str(session.id),
+                }
+            },
         state = await self._graph.ainvoke(
             {
                 "messages": messages,
-            }
+            },
+            config={
+                "configurable": {
+                    "thread_id": str(session.id),
+                }
+            },
         )
         for msg in state["messages"]:
             logger.debug(
@@ -83,15 +101,15 @@ class ChatService:
             )
         response: AIMessage = state["messages"][-1]
         # 6. Save assistant response
-        self._history_manager.add_ai_message(
-            session.id,
-            response.content,
-        )
+        # self._history_manager.add_ai_message(
+        #     session.id,
+        #     response.content,
+        # )
 
-        self._history_manager.trim_history(
-            session.id,
-            max_messages=20,
-        )
+        # self._history_manager.trim_history(
+        #     session.id,
+        #     max_messages=20,
+        # )
 
         logger.debug("Assistant response saved.")
 

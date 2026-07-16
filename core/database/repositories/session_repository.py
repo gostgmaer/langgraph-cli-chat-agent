@@ -1,6 +1,9 @@
+
 from core.database.models.session import SessionModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+
+from core.database.models.session import SessionModel
 
 
 class SessionRepository:
@@ -28,7 +31,7 @@ class SessionRepository:
         result = await self._session.execute(statement)
         return result.scalar_one_or_none()
 
-    async def list_all(self)->list[SessionModel]:
+    async def list_all(self) -> list[SessionModel]:
         statement = select(SessionModel)
         result = await self._session.execute(statement)
         return result.scalars().all()
@@ -41,3 +44,10 @@ class SessionRepository:
     async def delete(self, session: SessionModel) -> None:
         await self._session.delete(session)
         await self._session.commit()
+
+    async def get_active_session(self) -> SessionModel | None:
+        stmt = select(SessionModel).where(SessionModel.is_active == True).limit(1)
+
+        result = await self._session.execute(stmt)
+
+        return result.scalar_one_or_none()

@@ -36,6 +36,15 @@ class SessionManager:
         self._current_session_id: str | None = None
         self._repository = repository
 
+    async def get_or_create(self) -> Session:
+
+        session = await self._repository.get_active_session()
+
+        if session:
+            return session
+
+        return await self.create()
+
     async def create_session(self, title: str = "New Chat") -> Session:
         session_id = str(uuid4())
         self._current_session_id = session_id
