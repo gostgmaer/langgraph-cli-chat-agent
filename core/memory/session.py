@@ -51,7 +51,7 @@ class SessionManager:
 
         return self._to_domain(saved_model)
         # self._sessions[session_id] = session
-        logger.info("Created session %s", session.id)
+        logger.debug("Created session %s", session.id)
         return session
 
     async def get_session(self, session_id: str) -> Session:
@@ -62,7 +62,7 @@ class SessionManager:
 
         session = self._to_domain(model)
 
-        logger.info("Retrieved session %s", session.id)
+        logger.debug("Retrieved session %s", session.id)
 
         return session
 
@@ -81,7 +81,7 @@ class SessionManager:
 
         self._current_session_id = session_id
 
-        logger.info("Switched session %s", session_id)
+        logger.debug("Switched session %s", session_id)
 
     async def delete_session(self, session_id: str) -> None:
         model = await self._repository.get_by_id(session_id)
@@ -94,7 +94,7 @@ class SessionManager:
         if self._current_session_id == session_id:
             self._current_session_id = None
 
-        logger.info("Deleted session %s", session_id)
+        logger.debug("Deleted session %s", session_id)
 
     def _to_model(
         self,

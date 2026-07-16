@@ -8,53 +8,35 @@
 # ============================================================
 
 
-
 from langchain_tavily import TavilySearch
-
-
-from dataclasses import dataclass
 from langchain.tools import tool
 
 from config.settings import settings
-from shared import logger
-
-
-
-@dataclass
-class NewsData:
-    topic: str
-    title: str
-    url: str
-
-
-@dataclass
-class Context:
-    topic: str
-
-
-@dataclass
-class ResponseFormat:
-    summary: str
-    temperature_celsius: float
-    temperature_fahrenheit: float
-    humidity: float
+from shared.logger import logger
 
 
 @tool(
     "get_news",
     description="Get the latest news for a given topic.",
-    return_direct=False,
 )
 async def get_news(topic: str):
     """Get the latest news for a topic."""
-    if not settings.tavily_api_key:
-        return "News API key is missing."
-    try:
-        search_tool = TavilySearch(max_results=2, api_key=settings.tavily_api_key, topic=topic)
 
-        logger.info("News tool executed for %s", topic)
-        return search_tool
+    if not settings.tavily_api_key:
+        return "Tavily API key is missing."
+
+    try:
+        search = TavilySearch(
+            max_results=5,
+            tavily_api_key=settings.tavily_api_key,
+        )
+
+        results =  search.invoke({"query": f"Latest news about {topic}"})
+
+        logger.debug("News tool executed for %s", topic)
+
+        return results
 
     except Exception as e:
+        logger.exception("News tool failed")
         return f"Unable to reach the news service: {e}"
-

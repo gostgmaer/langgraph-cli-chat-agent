@@ -157,7 +157,7 @@ Central logging across the application.
 Example
 
 ```python
-logger.info("Processing message")
+logger.debug("Processing message")
 logger.error("Something failed")
 ```
 

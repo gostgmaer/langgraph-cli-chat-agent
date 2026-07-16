@@ -48,7 +48,7 @@ class ChatService:
         if session is None:
             session = await self._session_manager.create_session()
 
-        logger.info("Using session %s", session.id)
+        logger.debug("Using session %s", session.id)
 
         # 3. Save user message
         self._history_manager.add_user_message(
@@ -59,7 +59,7 @@ class ChatService:
         # 4. Load conversation history
         messages = self._history_manager.get_messages(session.id)
 
-        logger.info(
+        logger.debug(
             "Executing LangGraph with %d messages.",
             len(messages),
         )
@@ -69,14 +69,14 @@ class ChatService:
         #     print(type(message).__name__, ":", message.content)
 
         # 5. Invoke LLM
-        logger.info("Processing user message...")
+        logger.debug("Processing user message...")
         state = await self._graph.ainvoke(
             {
                 "messages": messages,
             }
         )
         for msg in state["messages"]:
-            logger.info(
+            logger.debug(
                 "%s -> %s",
                 type(msg).__name__,
                 getattr(msg, "content", ""),
@@ -93,7 +93,7 @@ class ChatService:
             max_messages=20,
         )
 
-        logger.info("Assistant response saved.")
+        logger.debug("Assistant response saved.")
 
         # 7. Return response
         return response

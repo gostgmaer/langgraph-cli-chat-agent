@@ -50,7 +50,7 @@ async def get_weather(city: str):
 
     if not settings.weather_api_key:
         return "Weather API key is missing."
-    logger.info("Weather tool executed for %s", city)
+    logger.debug("Weather tool executed for %s", city)
     try:
         response = await client.get(
             settings.weather_api_url,
@@ -63,7 +63,7 @@ async def get_weather(city: str):
 
         response.raise_for_status()
         data = response.json()
-        logger.info("Weather tool executed for %s", city)
+        logger.debug("Weather tool executed for %s", city)
         logger.debug(f"Weather data for {city}: {data}")
         return (
             f"📍 {data['name']}, {data['sys']['country']}\n"

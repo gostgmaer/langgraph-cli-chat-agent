@@ -28,7 +28,7 @@ def create_chatbot_node(
     ):
         messages = state["messages"]
         response = await tool_enabled_llm.ainvoke(messages)
-        logger.info("Content: %s", response.content)
+        logger.debug("Content: %s", response.content)
         logger.info("Tool Calls: %s", response.tool_calls)
         return {
             "messages": [

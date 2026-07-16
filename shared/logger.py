@@ -16,7 +16,7 @@ Every module should import the logger from here.
 Example:
     from shared.logger import logger
 
-    logger.info("Application started")
+    logger.debug("Application started")
 """
 
 from logging import INFO, getLogger
