@@ -93,7 +93,7 @@ class Settings(BaseSettings):
     # =====================================================
 
     vector_store: VectorStore = Field(
-        alias="VECTOR_STORE_BACKEND",
+        alias="VECTOR_STORE",
     )
 
     chroma_persist_dir: Path = Field(
@@ -123,9 +123,9 @@ class Settings(BaseSettings):
 
     database_url: str = Field(alias="DATABASE_URL")
 
-    sqlite_checkpoint_db: Path = Field(alias="SQLITE_CHECKPOINT_DB")
-    sqlite_session_db: Path = Field(alias="SQLITE_SESSION_DB")
-    sqlite_summary_db: Path = Field(alias="SQLITE_SUMMARY_DB")
+    sqlite_checkpoint_db: Path = Field(alias="CHECKPOINT_DB_PATH")
+    sqlite_session_db: Path = Field(alias="SESSION_DB_PATH")
+    sqlite_summary_db: Path = Field(alias="SUMMARY_DB_PATH")
 
     # =====================================================
     # Memory
@@ -136,7 +136,7 @@ class Settings(BaseSettings):
     )
 
     summarize_after_n_messages: int = Field(
-        alias="SUMMARIZE_AFTER_N_MESSAGES",
+        alias="SUMMARY_TRIGGER_MESSAGES",
     )
 
     # =====================================================
@@ -148,14 +148,14 @@ class Settings(BaseSettings):
         alias="WEATHER_API_KEY",
     )
 
-    weather_api_url: str = Field(alias="WEATHER_API_URL")
+    weather_api_url: str = Field(alias="OPENWEATHER_BASE_URL")
 
     news_api_key: str | None = Field(
         default=None,
         alias="NEWS_API_KEY",
     )
 
-    news_api_url: str = Field(alias="NEWS_API_URL")
+    news_api_url: str = Field(alias="NEWSAPI_BASE_URL")
 
     search_provider: SearchProvider = Field(
         alias="SEARCH_PROVIDER",
