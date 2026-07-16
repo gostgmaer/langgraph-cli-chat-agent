@@ -1,0 +1,53 @@
+# ============================================================
+# .gitignore
+# ============================================================
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Data & DB files
+data/checkpoints.db
+data/sessions.db
+data/summaries.db
+data/chroma/
+data/faiss/
+data/agent.log
+
+# Keep uploads folder structure
+!data/uploads/
+!data/uploads/.gitkeep
+!knowledge/documents/
+!knowledge/documents/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.venv/
+
+__pycache__/
+
+.env
+
+*.db
+
+*.sqlite
+
+*.sqlite3
+
+.pytest_cache/
+
+.vscode/
+
+.idea/
+
+data/
+
+*.log

@@ -1,0 +1,59 @@
+# ============================================================
+# requirements.txt
+# ============================================================
+# Core
+langgraph
+langchain
+langchain-core
+# langchain-openai
+# langchain-anthropic
+langchain-google-genai
+google-generativeai
+    
+# ==============================
+# Utilities
+# ==============================
+typing_extensions
+
+# CLI & Rendering
+rich
+# typer
+# click
+
+# Memory & Storage
+# sqlite3  (stdlib)
+# psycopg2-binary
+sqlalchemy
+aiosqlite
+
+# Vector Stores
+# chromadb
+# faiss-cpu
+# qdrant-client
+# pgvector
+
+# Embeddings
+# sentence-transformers
+# openai
+
+# Knowledge / RAG
+# pypdf
+# unstructured
+# beautifulsoup4
+# requests
+
+# Tools
+httpx
+# duckduckgo-search
+
+#----------------------
+# Configuration
+#----------------------
+pydantic
+pydantic-settings
+python-dotenv
+
+# Dev / Testing
+# pytest
+
+# ============================================================
