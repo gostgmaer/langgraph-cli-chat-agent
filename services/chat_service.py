@@ -7,10 +7,13 @@
 # TODO: Return final assistant message to caller
 # ============================================================
 
+from collections.abc import AsyncGenerator
+
 from langchain.messages import AIMessage, HumanMessage
 from langchain_core.messages import BaseMessage
 from requests import session
 
+from core.database.models import message
 from core.database.repositories.session_repository import SessionRepository
 from core.llm.formatter import LLMResponseFormatter
 from core.llm.manager import LLMManager, llm
@@ -77,13 +80,14 @@ class ChatService:
 
         # 5. Invoke LLM
         logger.debug("Processing user message...")
-        config = {
-            
-                "configurable": {
-                    "thread_id": str(session.id),
-                }
-            },
-        state = await self._graph.ainvoke(
+        # config = (
+        #     {
+        #         "configurable": {
+        #             "thread_id": str(session.id),
+        #         }
+        #     },
+        # )
+        state = await self._graph.astream(
             {
                 "messages": messages,
             },
@@ -116,8 +120,58 @@ class ChatService:
         # 7. Return response
         return response
 
-    async def get_response(self, user_message: str) -> str:
-        """Return formatted assistant text."""
+    async def stream_chat(
+        self,
+        user_message: str,
+    ) -> AsyncGenerator[str, None]:
 
-        response = await self.chat(user_message)
-        return LLMResponseFormatter.to_text(response)
+        if not user_message.strip():
+            raise ValueError("Message cannot be empty.")
+
+        session = await self._session_manager.get_current_session()
+
+        if session is None:
+            session = await self._session_manager.create_session()
+
+        config = {
+            "configurable": {
+                "thread_id": str(session.id),
+            }
+        }
+
+        async for event in self._graph.astream_events(
+            {
+                "messages": [
+                    HumanMessage(content=user_message),
+                ]
+            },
+            config=config,
+            version="v2",
+        ):
+
+            if event["event"] == "on_chat_model_stream":
+
+                chunk = event["data"]["chunk"]
+
+                if isinstance(chunk.content, str):
+                    yield chunk.content
+
+                elif isinstance(chunk.content, list):
+                    for block in chunk.content:
+                        if isinstance(block, dict) and block.get("type") == "text":
+                            yield block.get("text", "")
+        
+    # async def get_response(self, user_message: str) -> str:
+    #     """Return formatted assistant text."""
+
+    #     response = await self.chat(user_message)
+    #     return LLMResponseFormatter.to_text(response)
+
+    async def get_response(self, message: str) -> str:
+
+        parts = []
+
+        async for token in self.stream_chat(message):
+            parts.append(token)
+
+        return "".join(parts)

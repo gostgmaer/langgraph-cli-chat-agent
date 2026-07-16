@@ -31,9 +31,11 @@ class CLI:
                 if user_message.lower() in ("exit", "quit", "close"):
                     self._renderer.print_system_message("Goodbye!")
                     break
-                self._renderer.print_user_message(user_message)
-                response = await self._chat_service.get_response(user_message)
-                self._renderer.print_assistant_message(response)
+                self._renderer.start_assistant_message()
+                async for token in self._chat_service.stream_chat(user_message):
+                    self._renderer.stream_token(token)
+
+                self._renderer.finish_assistant_message()
             except KeyboardInterrupt:
                 self._renderer.print_system_message("\nGoodbye 👋")
                 break

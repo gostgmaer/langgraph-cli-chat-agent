@@ -38,6 +38,7 @@ class LLMManager:
         common_kwargs = {
             "temperature": self._temperature,
             "max_tokens": self._max_tokens,
+            "streaming": True,
         }
         logger.info(
             "Initializing %s provider...",

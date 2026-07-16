@@ -6,7 +6,7 @@ from core.database.db import AsyncSessionLocal, init_database
 from core.graph.checkpointer import Checkpointer
 
 from interfaces.cli.cli import CLI
-from interfaces.cli.renderer import renderer
+from interfaces.cli.renderer import CLIRenderer
 
 
 async def main() -> None:
@@ -28,7 +28,7 @@ async def main() -> None:
 
             cli = CLI(
                 chat_service=chat_service,
-                renderer=renderer,
+                renderer=CLIRenderer(),
             )
 
             await cli.run()
