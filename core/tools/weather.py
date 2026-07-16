@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from langchain.tools import tool
 import httpx
 
-from config import settings
+from config.settings import settings
 from shared import logger
 
 client = httpx.AsyncClient(timeout=10)

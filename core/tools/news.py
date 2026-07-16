@@ -15,7 +15,7 @@ from langchain_tavily import TavilySearch
 from dataclasses import dataclass
 from langchain.tools import tool
 
-from config import settings
+from config.settings import settings
 
 
 

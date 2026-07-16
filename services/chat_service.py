@@ -10,6 +10,7 @@
 from langchain.messages import AIMessage
 from langchain_core.messages import BaseMessage
 
+from core.database.repositories.session_repository import SessionRepository
 from core.llm.formatter import LLMResponseFormatter
 from core.llm.manager import LLMManager, llm
 from core.memory.history import HistoryManager
@@ -100,6 +101,6 @@ class ChatService:
 
 chat_service = ChatService(
     llm=llm,
-    session_manager=SessionManager(),
+    session_manager=SessionManager(SessionRepository()),
     history_manager=HistoryManager(),
 )

@@ -12,7 +12,7 @@
 import os
 
 from langchain_core.tools import tool
-from config import settings
+from config.settings import settings
 from langchain_community.utilities import GoogleSerperAPIWrapper
 
 
