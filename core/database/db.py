@@ -11,6 +11,7 @@ engine = create_async_engine(
     settings.database_url,
     echo=settings.debug,
 )
+
 AsyncSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
 async def get_session() -> AsyncSession: # type: ignore

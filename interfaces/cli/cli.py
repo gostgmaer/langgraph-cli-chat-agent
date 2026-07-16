@@ -20,7 +20,7 @@ class CLI:
         self._chat_service = chat_service
         self._renderer = renderer
 
-    def run(self) -> None:
+    async def run(self) -> None:
         "Start the CLI application."
         self._renderer.print_banner()
         while True:
@@ -32,7 +32,7 @@ class CLI:
                     self._renderer.print_system_message("Goodbye!")
                     break
                 self._renderer.print_user_message(user_message)
-                response = self._chat_service.get_response(user_message)
+                response = await self._chat_service.get_response(user_message)
                 self._renderer.print_assistant_message(response)
             except KeyboardInterrupt:
                 self._renderer.print_system_message("\nGoodbye 👋")

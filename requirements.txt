@@ -26,6 +26,7 @@ rich
 # psycopg2-binary
 sqlalchemy
 aiosqlite
+pysqlite
 
 # Vector Stores
 # chromadb

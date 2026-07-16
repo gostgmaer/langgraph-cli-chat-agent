@@ -99,8 +99,3 @@ class ChatService:
         return LLMResponseFormatter.to_text(response)
 
 
-chat_service = ChatService(
-    llm=llm,
-    session_manager=SessionManager(SessionRepository()),
-    history_manager=HistoryManager(),
-)

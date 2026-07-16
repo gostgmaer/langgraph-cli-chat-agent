@@ -8,15 +8,25 @@
 # ============================================================
 
 
+import asyncio
+
+from core.bootstrap import create_chat_service
+from core.database.db import init_database
 from interfaces.cli.cli import CLI
 from interfaces.cli.renderer import renderer
-from services.chat_service import chat_service
 
 
-def main() -> None:
-    cli = CLI(chat_service, renderer)
-    cli.run()
+async def main() -> None:
+    await init_database()
+    chat_service = await create_chat_service()
+
+    cli = CLI(
+        chat_service=chat_service,
+        renderer=renderer,
+    )
+
+    await cli.run()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

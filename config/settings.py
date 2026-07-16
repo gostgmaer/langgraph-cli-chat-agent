@@ -32,6 +32,7 @@ class Settings(BaseSettings):
 
     app_name: str = Field(alias="APP_NAME")
     app_version: str = Field(alias="APP_VERSION")
+    debug:bool=Field(alias="DEBUG")
 
     # =====================================================
     # LLM
