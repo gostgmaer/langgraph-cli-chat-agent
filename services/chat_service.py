@@ -75,6 +75,12 @@ class ChatService:
                 "messages": messages,
             }
         )
+        for msg in state["messages"]:
+            logger.info(
+                "%s -> %s",
+                type(msg).__name__,
+                getattr(msg, "content", ""),
+            )
         response: AIMessage = state["messages"][-1]
         # 6. Save assistant response
         self._history_manager.add_ai_message(
@@ -97,5 +103,3 @@ class ChatService:
 
         response = await self.chat(user_message)
         return LLMResponseFormatter.to_text(response)
-
-

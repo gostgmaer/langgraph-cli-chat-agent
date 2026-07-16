@@ -14,7 +14,7 @@ from langchain.tools import tool
 import httpx
 
 from config.settings import settings
-from shared import logger
+from shared.logger import logger
 
 client = httpx.AsyncClient(timeout=10)
 
@@ -47,8 +47,10 @@ client = httpx.AsyncClient(timeout=10)
 )
 async def get_weather(city: str):
     """Get the current weather for a city."""
+
     if not settings.weather_api_key:
         return "Weather API key is missing."
+    logger.info("Weather tool executed for %s", city)
     try:
         response = await client.get(
             settings.weather_api_url,
@@ -61,6 +63,7 @@ async def get_weather(city: str):
 
         response.raise_for_status()
         data = response.json()
+        logger.info("Weather tool executed for %s", city)
         logger.debug(f"Weather data for {city}: {data}")
         return (
             f"📍 {data['name']}, {data['sys']['country']}\n"

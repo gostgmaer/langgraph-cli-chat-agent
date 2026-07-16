@@ -10,6 +10,7 @@
 # ============================================================
 
 
+from shared.logger import logger
 from langchain_core.messages import AIMessage
 from langchain_core.tools import BaseTool
 from core.graph.state import GraphState
@@ -27,6 +28,12 @@ def create_chatbot_node(
     ):
         messages = state["messages"]
         response = await tool_enabled_llm.ainvoke(messages)
-        return {"messages": [AIMessage(content=response.content)]}
+        logger.info("Content: %s", response.content)
+        logger.info("Tool Calls: %s", response.tool_calls)
+        return {
+            "messages": [
+                response,
+            ]
+        }
 
     return chatbot_node

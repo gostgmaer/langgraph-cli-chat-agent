@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from langchain.tools import tool
 
 from config.settings import settings
+from shared import logger
 
 
 
@@ -51,7 +52,7 @@ async def get_news(topic: str):
     try:
         search_tool = TavilySearch(max_results=2, api_key=settings.tavily_api_key, topic=topic)
 
-        print(search_tool)
+        logger.info("News tool executed for %s", topic)
         return search_tool
 
     except Exception as e:
