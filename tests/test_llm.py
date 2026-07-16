@@ -1,5 +1,6 @@
 from core.llm.manager import llm
+from services.chat_service import chat_service
 
-response = llm.invoke("Say hello in one sentence.")
 
+response = chat_service.chat("Hello")
 print(response.content)
