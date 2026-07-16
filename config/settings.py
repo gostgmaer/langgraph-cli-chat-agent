@@ -1,31 +1,10 @@
-# ============================================================
-# config/settings.py — Application Settings & Configuration
-# ============================================================
-# TODO: Load environment variables using pydantic-settings or python-dotenv
-# TODO: Define a Settings class with all app-wide configuration
-# TODO: Expose a singleton settings instance for import
-# ============================================================
-
-
-"""
-Application configuration.
-
-Loads environment variables from `.env` using Pydantic Settings
-and exposes a singleton `settings` object.
-
-This module is the ONLY place where environment variables
-should be accessed. Do not use `os.getenv()` anywhere else
-in the project.
-"""
-
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from config.enums import (
-    AppEnvironment,
     CLITheme,
     EmbeddingProvider,
     LLMProvider,
@@ -36,125 +15,94 @@ from config.enums import (
     VectorStore,
 )
 
-# ============================================================================
-# Application
-# ============================================================================
 
+class Settings(BaseSettings):
+    """Application Settings"""
 
-class AppSettings(BaseModel):
-    """Application configuration."""
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
 
-    name: str = Field(alias="APP_NAME")
-    version: str = Field(alias="APP_VERSION")
-    environment: AppEnvironment = Field(alias="APP_ENV")
-    debug: bool = Field(alias="DEBUG")
+    # =====================================================
+    # Application
+    # =====================================================
 
+    app_name: str = Field(alias="APP_NAME")
+    app_version: str = Field(alias="APP_VERSION")
 
-# ============================================================================
-# LLM
-# ============================================================================
+    # =====================================================
+    # LLM
+    # =====================================================
 
+    openai_api_key: str | None = Field(
+        default=None,
+        alias="OPENAI_API_KEY",
+    )
 
-class LLMSettings(BaseModel):
-    """Large Language Model configuration."""
+    anthropic_api_key: str | None = Field(
+        default=None,
+        alias="ANTHROPIC_API_KEY",
+    )
 
-    provider: LLMProvider = Field(alias="LLM_PROVIDER")
+    google_api_key: str | None = Field(
+        default=None,
+        alias="GOOGLE_API_KEY",
+    )
 
-    openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
-    anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
-    google_api_key: str | None = Field(default=None, alias="GOOGLE_API_KEY")
-    groq_api_key: str | None = Field(default=None, alias="GROQ_API_KEY")
+    groq_api_key: str | None = Field(
+        default=None,
+        alias="GROQ_API_KEY",
+    )
 
-    model: str = Field(alias="LLM_MODEL")
+    llm_provider: LLMProvider = Field(alias="LLM_PROVIDER")
 
-    temperature: float = Field(alias="LLM_TEMPERATURE")
+    llm_model: str = Field(alias="LLM_MODEL")
 
-    max_tokens: int = Field(alias="LLM_MAX_TOKENS")
+    llm_temperature: float = Field(
+        default=0.7,
+        alias="LLM_TEMPERATURE",
+    )
 
-    streaming: bool = Field(alias="LLM_STREAMING")
+    llm_max_tokens: int = Field(
+        default=2048,
+        alias="LLM_MAX_TOKENS",
+    )
 
-    top_p: float = Field(alias="TOP_P")
+    llm_streaming: bool = Field(
+        default=True,
+        alias="LLM_STREAMING",
+    )
 
-    top_k: int = Field(alias="TOP_K")
+    # =====================================================
+    # Embeddings
+    # =====================================================
 
-    @model_validator(mode="after")
-    def validate_temperature(self):
-        if not 0 <= self.temperature <= 2:
-            raise ValueError("LLM_TEMPERATURE must be between 0 and 2")
-        return self
+    embedding_provider: EmbeddingProvider = Field(
+        alias="EMBEDDING_PROVIDER",
+    )
 
+    embedding_model: str = Field(
+        alias="EMBEDDING_MODEL",
+    )
 
-# ============================================================================
-# Embeddings
-# ============================================================================
+    # =====================================================
+    # Vector Store
+    # =====================================================
 
+    vector_store: VectorStore = Field(
+        alias="VECTOR_STORE_BACKEND",
+    )
 
-class EmbeddingSettings(BaseModel):
-    """Embedding model configuration."""
+    chroma_persist_dir: Path = Field(
+        alias="CHROMA_PERSIST_DIR",
+    )
 
-    provider: EmbeddingProvider = Field(alias="EMBEDDING_PROVIDER")
-    model: str = Field(alias="EMBEDDING_MODEL")
-
-
-# ============================================================================
-# Memory
-# ============================================================================
-
-
-class MemorySettings(BaseModel):
-    """Conversation memory configuration."""
-
-    max_history_messages: int = Field(alias="MAX_HISTORY_MESSAGES")
-
-    summary_trigger_messages: int = Field(alias="SUMMARY_TRIGGER_MESSAGES")
-
-    summary_keep_last_messages: int = Field(alias="SUMMARY_KEEP_LAST_MESSAGES")
-
-    max_context_tokens: int = Field(alias="MAX_CONTEXT_TOKENS")
-
-    auto_generate_session_title: bool = Field(alias="AUTO_GENERATE_SESSION_TITLE")
-
-    @model_validator(mode="after")
-    def validate_summary(self):
-        if self.summary_keep_last_messages >= self.summary_trigger_messages:
-            raise ValueError(
-                "SUMMARY_KEEP_LAST_MESSAGES "
-                "must be smaller than SUMMARY_TRIGGER_MESSAGES"
-            )
-
-        return self
-
-
-# ============================================================================
-# Database
-# ============================================================================
-
-
-class DatabaseSettings(BaseModel):
-    """Database configuration."""
-
-    database_url: str = Field(alias="DATABASE_URL")
-
-    checkpoint_db_path: Path = Field(alias="CHECKPOINT_DB_PATH")
-
-    session_db_path: Path = Field(alias="SESSION_DB_PATH")
-
-    summary_db_path: Path = Field(alias="SUMMARY_DB_PATH")
-
-
-# ============================================================================
-# Vector Store
-# ============================================================================
-
-
-class VectorStoreSettings(BaseModel):
-    """Vector database configuration."""
-
-    backend: VectorStore = Field(alias="VECTOR_STORE")
-
-    chroma_persist_dir: Path = Field(alias="CHROMA_PERSIST_DIR")
-
-    faiss_index_path: Path = Field(alias="FAISS_INDEX_PATH")
+    faiss_index_path: Path = Field(
+        alias="FAISS_INDEX_PATH",
+    )
 
     qdrant_url: str = Field(alias="QDRANT_URL")
 
@@ -163,26 +111,69 @@ class VectorStoreSettings(BaseModel):
         alias="QDRANT_API_KEY",
     )
 
+    # =====================================================
+    # Database
+    # =====================================================
+
     postgres_host: str = Field(alias="POSTGRES_HOST")
-
     postgres_port: int = Field(alias="POSTGRES_PORT")
-
     postgres_db: str = Field(alias="POSTGRES_DB")
-
     postgres_user: str = Field(alias="POSTGRES_USER")
-
     postgres_password: str = Field(alias="POSTGRES_PASSWORD")
 
+    database_url: str = Field(alias="DATABASE_URL")
 
-# ============================================================================
-# RAG
-# ============================================================================
+    sqlite_checkpoint_db: Path = Field(alias="SQLITE_CHECKPOINT_DB")
+    sqlite_session_db: Path = Field(alias="SQLITE_SESSION_DB")
+    sqlite_summary_db: Path = Field(alias="SQLITE_SUMMARY_DB")
 
+    # =====================================================
+    # Memory
+    # =====================================================
 
-class RAGSettings(BaseModel):
-    """Retrieval-Augmented Generation configuration."""
+    max_history_messages: int = Field(
+        alias="MAX_HISTORY_MESSAGES",
+    )
 
-    enabled: bool = Field(alias="ENABLE_RAG")
+    summarize_after_n_messages: int = Field(
+        alias="SUMMARIZE_AFTER_N_MESSAGES",
+    )
+
+    # =====================================================
+    # Tools
+    # =====================================================
+
+    weather_api_key: str | None = Field(
+        default=None,
+        alias="WEATHER_API_KEY",
+    )
+
+    weather_api_url: str = Field(alias="WEATHER_API_URL")
+
+    news_api_key: str | None = Field(
+        default=None,
+        alias="NEWS_API_KEY",
+    )
+
+    news_api_url: str = Field(alias="NEWS_API_URL")
+
+    search_provider: SearchProvider = Field(
+        alias="SEARCH_PROVIDER",
+    )
+
+    serpapi_key: str | None = Field(
+        default=None,
+        alias="SERPAPI_KEY",
+    )
+
+    tavily_api_key: str | None = Field(
+        default=None,
+        alias="TAVILY_API_KEY",
+    )
+
+    # =====================================================
+    # RAG
+    # =====================================================
 
     upload_dir: Path = Field(alias="UPLOAD_DIR")
 
@@ -192,153 +183,81 @@ class RAGSettings(BaseModel):
 
     retrieval_top_k: int = Field(alias="RETRIEVAL_TOP_K")
 
-    retrieval_strategy: RetrievalStrategy = Field(alias="RETRIEVAL_STRATEGY")
-
-
-# ============================================================================
-# Tools
-# ============================================================================
-
-
-class ToolSettings(BaseModel):
-    """Tool configuration."""
-
-    enable_search: bool = Field(alias="ENABLE_SEARCH_TOOL")
-
-    enable_weather: bool = Field(alias="ENABLE_WEATHER_TOOL")
-
-    enable_news: bool = Field(alias="ENABLE_NEWS_TOOL")
-
-    enable_calculator: bool = Field(alias="ENABLE_CALCULATOR_TOOL")
-
-    search_provider: SearchProvider = Field(alias="SEARCH_PROVIDER")
-
-    serper_api_key: str | None = Field(default=None, alias="SERPER_API_KEY")
-
-    tavily_api_key: str | None = Field(default=None, alias="TAVILY_API_KEY")
-
-    openweather_api_key: str | None = Field(
-        default=None,
-        alias="OPENWEATHER_API_KEY",
+    retrieval_strategy: RetrievalStrategy = Field(
+        alias="RETRIEVAL_STRATEGY",
     )
 
-    openweather_base_url: str = Field(alias="OPENWEATHER_BASE_URL")
+    # =====================================================
+    # CLI
+    # =====================================================
 
-    newsapi_api_key: str | None = Field(
-        default=None,
-        alias="NEWSAPI_API_KEY",
+    cli_theme: CLITheme = Field(alias="CLI_THEME")
+
+    cli_streaming: bool = Field(alias="CLI_STREAMING")
+
+    cli_show_tool_calls: bool = Field(
+        alias="CLI_SHOW_TOOL_CALLS",
     )
 
-    newsapi_base_url: str = Field(alias="NEWSAPI_BASE_URL")
+    cli_show_thinking: bool = Field(
+        alias="CLI_SHOW_THINKING",
+    )
 
+    # =====================================================
+    # Logging
+    # =====================================================
 
-# ============================================================================
-# HTTP
-# ============================================================================
+    log_level: LogLevel = Field(alias="LOG_LEVEL")
 
+    log_file: Path = Field(alias="LOG_FILE")
 
-class HTTPSettings(BaseModel):
-    """HTTP client configuration."""
+    log_format: LogFormat = Field(alias="LOG_FORMAT")
 
-    timeout: int = Field(alias="HTTP_TIMEOUT")
+    # =====================================================
+    # LangSmith
+    # =====================================================
 
-    max_retries: int = Field(alias="MAX_RETRIES")
+    langchain_tracing: bool = Field(
+        alias="LANGCHAIN_TRACING_V2",
+    )
 
-    retry_delay: int = Field(alias="RETRY_DELAY")
+    langchain_endpoint: str = Field(
+        alias="LANGCHAIN_ENDPOINT",
+    )
 
-    user_agent: str = Field(alias="USER_AGENT")
-
-
-# ============================================================================
-# CLI
-# ============================================================================
-
-
-class CLISettings(BaseModel):
-    """CLI configuration."""
-
-    theme: CLITheme = Field(alias="CLI_THEME")
-
-    streaming: bool = Field(alias="CLI_STREAMING")
-
-    show_tool_calls: bool = Field(alias="CLI_SHOW_TOOL_CALLS")
-
-    show_thinking: bool = Field(alias="CLI_SHOW_THINKING")
-
-
-# ============================================================================
-# Logging
-# ============================================================================
-
-
-class LoggingSettings(BaseModel):
-    """Logging configuration."""
-
-    level: LogLevel = Field(alias="LOG_LEVEL")
-
-    format: LogFormat = Field(alias="LOG_FORMAT")
-
-    file: Path = Field(alias="LOG_FILE")
-
-
-# ============================================================================
-# LangSmith
-# ============================================================================
-
-
-class LangSmithSettings(BaseModel):
-    """LangSmith tracing configuration."""
-
-    tracing: bool = Field(alias="LANGCHAIN_TRACING_V2")
-
-    endpoint: str = Field(alias="LANGCHAIN_ENDPOINT")
-
-    api_key: str | None = Field(
+    langchain_api_key: str | None = Field(
         default=None,
         alias="LANGCHAIN_API_KEY",
     )
 
-    project: str = Field(alias="LANGCHAIN_PROJECT")
-
-
-# ============================================================================
-# Root Settings
-# ============================================================================
-
-
-class Settings(BaseSettings):
-    """Application settings."""
-
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-        case_sensitive=False,
+    langchain_project: str = Field(
+        alias="LANGCHAIN_PROJECT",
     )
 
-    app: AppSettings
-    llm: LLMSettings
-    embedding: EmbeddingSettings
-    memory: MemorySettings
-    database: DatabaseSettings
-    vector_store: VectorStoreSettings
-    rag: RAGSettings
-    tools: ToolSettings
-    http: HTTPSettings
-    cli: CLISettings
-    logging: LoggingSettings
-    langsmith: LangSmithSettings
+    # =====================================================
+    # Session
+    # =====================================================
 
-    @computed_field
-    @property
-    def project_root(self) -> Path:
-        """Return project root directory."""
-        return Path(__file__).resolve().parent.parent
+    session_ttl_hours: int = Field(
+        alias="SESSION_TTL_HOURS",
+    )
+
+    max_sessions: int = Field(
+        alias="MAX_SESSIONS",
+    )
+
+    @field_validator("llm_temperature")
+    @classmethod
+    def validate_temperature(cls, value: float) -> float:
+        if not 0 <= value <= 2:
+            raise ValueError(
+                "LLM temperature must be between 0 and 2."
+            )
+        return value
 
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    """Return cached application settings."""
     return Settings()
 
 
