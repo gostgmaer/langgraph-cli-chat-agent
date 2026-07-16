@@ -30,18 +30,20 @@ class CLIRenderer:
                 title,
                 subtitle=f"{settings.llm_provider.value} • {settings.llm_model}",
                 expand=False,
+                padding=(1, 2)
+                
             )
         )
 
     def print_user_message(self,message: str)->None:
         """Display a user message."""
-        self.console.print(f"[bold green]User:[/bold green] {message}")
+        self.console.print(f"\n[bold green]👤 You:[/bold green] {message}")
 
     def print_assistant_message(self,message: str)->None:
         """Display an assistant message."""
-        self.console.print(f"[bold blue]Assistant:[/bold blue] {message}")
+        self.console.print(f"[bold blue]Assistant:[/bold blue]")
         self.console.print(Markdown(message))
-        self.console.print()
+        # self.console.print()
 
     def print_system_message(self,message: str)->None:
         """Display a system message."""

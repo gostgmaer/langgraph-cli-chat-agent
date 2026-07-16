@@ -9,8 +9,9 @@
 
 from langchain_core.messages import BaseMessage
 
-from core.llm.manager import LLMManager,llm
+from core.llm.manager import LLMManager, llm
 from shared.logger import logger
+from core.llm.formatter import LLMResponseFormatter
 
 
 class ChatService:
@@ -26,6 +27,11 @@ class ChatService:
         logger.info("User message processed.")
         return response
 
+    def get_response(self, user_message: str) -> str:
+        """Get formatted text response."""
+        response = self.chat(user_message)
+
+        return LLMResponseFormatter.to_text(response)
 
 
 chat_service = ChatService(llm)
