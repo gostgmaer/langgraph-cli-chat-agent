@@ -1,50 +1,54 @@
-# AI Agent Platform - Development Progress
+# LangGraph Learning Progress Summary
 
-> **Project:** LangGraph CLI Chat Agent
+> **Project:** AI Agent Platform (CLI)
 >
-> **Status:** Phase 1 Completed ✅
->
-> **Date:** July 16, 2026
+> **Current Milestone:** ✅ Production-style LangGraph ReAct Agent with Tool Calling
 
 ---
 
 # Project Goal
 
-Build a production-ready **CLI-based AI Agent Platform** using:
+The goal of this project is **not just to build an AI chatbot**, but to **learn LangGraph deeply** by implementing every concept from scratch.
 
-- LangGraph
-- LangChain
-- Multiple LLM Providers
-- Session Memory
-- SQLite Checkpointing
-- Streaming
-- Web Search
-- Weather Tool
-- News Tool
+The long-term objective is to build a production-ready AI Agent Platform that supports:
+
+- Tool Calling
+- Conversation Memory
+- Persistent Checkpointing
 - RAG
-- Future API Support
+- Streaming
+- Multi-Agent Workflows
+- Planning & Reasoning
+- Human-in-the-loop
+- Production Deployment
 
-The architecture is designed to be modular so future components can be added without major refactoring.
+Every component is built manually to understand **why it exists**, not just how to use it.
 
 ---
 
-# Project Architecture
+# Technology Stack
 
-```
-CLI
+| Category | Technology |
+|----------|------------|
+| Language | Python 3.13 |
+| Agent Framework | LangGraph |
+| LLM Framework | LangChain |
+| LLM Provider | Google Gemini |
+| Database | SQLite |
+| ORM | SQLAlchemy Async |
+| HTTP Client | HTTPX |
+| CLI | Rich |
+| Search | Tavily |
+| Weather | OpenWeather |
+
+---
+
+# Current Architecture
+
+```text
+User
  │
  ▼
-ChatService
- │
- ▼
-LLMManager
- │
- ▼
-LLM Provider
-(Google/OpenAI/Groq/Anthropic)
-
-Later
-
 CLI
  │
  ▼
@@ -53,560 +57,362 @@ ChatService
  ▼
 LangGraph
  │
- ├── Memory
- ├── Tools
- ├── RAG
- ├── Planner
- └── LLMManager
+ ▼
+Chatbot Node
+ │
+ ▼
+tools_condition
+ ├─────────────┐
+ │             │
+ ▼             ▼
+ToolNode      END
+ │
+ ▼
+ToolMessage
+ │
+ ▼
+Chatbot Node
+ │
+ ▼
+Final AIMessage
 ```
 
 ---
 
-# Folder Structure
+# Completed Modules
 
-Current structure
+## ✅ Foundation
 
-```
-ai-agent-platform/
+Implemented:
 
-config/
-core/
-interfaces/
-knowledge/
-services/
-shared/
-storage/
-tests/
-data/
-```
-
-This structure will remain unchanged throughout development.
+- Configuration Management
+- Environment Variables
+- Logger
+- CLI Renderer
+- Project Structure
 
 ---
 
-# Phase 1 - Foundation (Completed)
+## ✅ LLM Manager
 
-## Completed Components
+Created a dedicated `LLMManager`.
 
-### 1. Configuration
+Responsibilities:
 
-Location
+- Initialize providers
+- Configure models
+- Configure temperature
+- Configure max tokens
+- Support streaming
+- Abstract provider differences
 
-```
-config/settings.py
-```
-
-Implemented
-
-- Environment loading
-- Pydantic Settings
-- Singleton Settings
-- Validation
-- Enum support
-
-Usage
-
-```python
-from config.settings import settings
-
-print(settings.llm_model)
-print(settings.google_api_key)
-```
-
----
-
-### 2. Environment Variables
-
-Created
-
-```
-.env
-```
-
-Supports
-
-- Google
-- OpenAI
-- Anthropic
-- Groq
-- Ollama (future)
-
-Also includes
-
-- Memory settings
-- Vector database
-- RAG
-- Logging
-- Session configuration
-- CLI configuration
-
----
-
-### 3. Logger
-
-Location
-
-```
-shared/logger.py
-```
-
-Purpose
-
-Central logging across the application.
-
-Example
-
-```python
-logger.debug("Processing message")
-logger.error("Something failed")
-```
-
----
-
-### 4. LLMManager
-
-Location
-
-```
-core/llm/manager.py
-```
-
-Purpose
-
-Responsible for creating and managing LLM instances.
-
-Responsibilities
-
-- Provider selection
-- Model initialization
-- Invocation
-- Async invocation
-- Streaming
-- Async streaming
-
-Supported Providers
+Supported Providers:
 
 - Google Gemini
 - OpenAI
 - Anthropic
 - Groq
 
-Public API
+Available Methods:
 
 ```python
-llm.invoke(...)
-llm.ainvoke(...)
-llm.stream(...)
-llm.astream(...)
-```
-
-Pattern Used
-
-Factory Pattern
-
-```
-Settings
-
-↓
-
-Provider
-
-↓
-
-Create Model
-
-↓
-
-Return BaseChatModel
-```
-
-This class knows everything about the LLM provider.
-
-Other modules do not.
-
----
-
-### 5. ChatService
-
-Location
-
-```
-services/chat_service.py
-```
-
-Purpose
-
-Acts as the application service between the CLI and the LLM.
-
-Responsibilities
-
-- Validate input
-- Call LLMManager
-- Return BaseMessage
-- Log events
-
-Current Flow
-
-```
-User
-
-↓
-
-ChatService
-
-↓
-
-LLMManager
-
-↓
-
-Gemini
-
-↓
-
-Response
-```
-
-Current Method
-
-```python
-chat(user_message: str)
-```
-
-No memory has been added yet.
-
----
-
-### 6. Dependency Injection
-
-Current Design
-
-```
-ChatService
-
-↓
-
-LLMManager
-```
-
-The ChatService receives an instance of LLMManager.
-
-This keeps the architecture loosely coupled and testable.
-
----
-
-### 7. Singleton Pattern
-
-Implemented
-
-```
-settings
-llm
-chat_service
-```
-
-This prevents unnecessary object creation.
-
----
-
-### 8. Testing
-
-Current test
-
-```
-tests/test_llm.py
-```
-
-Verified
-
-```
-Settings
-
-↓
-
-LLMManager
-
-↓
-
-Gemini
-
-↓
-
-Response
-```
-
-Output
-
-```
-Hello! How can I help you today?
-```
-
-Foundation is working successfully.
-
----
-
-# Current Architecture
-
-```
-tests/test_llm.py
-
-        │
-
-        ▼
-
-ChatService
-
-        │
-
-        ▼
-
-LLMManager
-
-        │
-
-        ▼
-
-Google Gemini
-
-        │
-
-        ▼
-
-AIMessage
-```
-
-Everything up to the LLM layer is operational.
-
----
-
-# Design Principles Used
-
-## Single Responsibility Principle
-
-Each class has one job.
-
-Example
-
-LLMManager
-
-Only manages LLMs.
-
-ChatService
-
-Only coordinates chat requests.
-
-Logger
-
-Only logs.
-
----
-
-## Factory Pattern
-
-Used inside
-
-```
-LLMManager
-```
-
-Responsible for selecting the correct provider.
-
-```
-Google
-
-OpenAI
-
-Anthropic
-
-Groq
+invoke()
+ainvoke()
+stream()
+astream()
 ```
 
 ---
 
-## Dependency Injection
+## ✅ Session Management
 
-Services receive dependencies instead of creating them.
-
-```
-ChatService
-
-↓
-
-LLMManager
-```
-
-Instead of
+Created:
 
 ```
-ChatService
-
-↓
-
-new ChatGoogleGenerativeAI(...)
+SessionManager
 ```
+
+Responsibilities:
+
+- Create Session
+- Switch Session
+- Delete Session
+- List Sessions
+- Retrieve Current Session
+
+Session metadata includes:
+
+- Session ID
+- Title
+- Created Time
+- Updated Time
+
+Sessions are persisted in SQLite.
 
 ---
 
-## Singleton Pattern
+## ✅ Conversation History
 
-Only one instance exists for
-
-- Settings
-- LLMManager
-- ChatService
-
----
-
-# What Is NOT Implemented Yet
-
-Memory
-
-Session Management
-
-SQLite
-
-Checkpointing
-
-LangGraph
-
-Tools
-
-Prompt Templates
-
-Streaming CLI
-
-Commands
-
-RAG
-
-Document Loaders
-
-Embeddings
-
-Vector Database
-
-Retriever
-
-Planner
-
-Agent Workflow
-
-These will be implemented incrementally.
-
----
-
-# Roadmap
-
-## Phase 1 ✅
-
-Foundation
-
-- Settings
-- Logger
-- LLM Manager
-- Chat Service
-- Gemini Connection
-
----
-
-## Phase 2
-
-CLI
-
-```
-renderer.py
-
-cli.py
-
-commands.py
-
-streaming.py
-```
-
-Goal
-
-Interactive chatbot.
-
----
-
-## Phase 3
-
-Conversation Memory
+Created:
 
 ```
 HistoryManager
-
-MemoryService
-
-SQLite
 ```
 
-Goal
+Current implementation:
 
-Remember previous messages.
+```python
+dict[str, list[BaseMessage]]
+```
+
+Messages are currently stored **in memory**.
+
+### Decision
+
+History persistence is intentionally postponed until learning **LangGraph Checkpointers**.
 
 ---
 
-## Phase 4
+## ✅ Database Layer
 
-Session Management
+Implemented:
+
+- SQLAlchemy Async Engine
+- AsyncSession
+- AsyncSessionLocal
+- Base Models
+- Repository Pattern
+
+Current Repository:
 
 ```
-SessionService
-
-Checkpointing
-
-Auto Resume
+SessionRepository
 ```
 
-Goal
+Architecture:
 
-Resume previous conversations.
+```text
+AsyncSession
+      │
+      ▼
+Repository
+      │
+      ▼
+Manager
+      │
+      ▼
+Service
+```
 
 ---
 
-## Phase 5
+## ✅ Dependency Injection
 
-Summarization
+Created:
 
 ```
-Summarizer
-
-Automatic Context Compression
+core/bootstrap.py
 ```
 
-Goal
+Responsibilities:
 
-Prevent context overflow.
+- Build application dependencies
+- Create database session
+- Create repositories
+- Create managers
+- Create services
+
+Factory:
+
+```python
+async def create_chat_service()
+```
+
+Dependency Flow:
+
+```text
+AsyncSession
+      │
+      ▼
+SessionRepository
+      │
+      ▼
+SessionManager
+      │
+      ▼
+HistoryManager
+      │
+      ▼
+ChatService
+```
+
+ChatService no longer creates its own dependencies.
 
 ---
 
-## Phase 6
+## ✅ Async Architecture
 
-LangGraph
+Entire application converted to Async.
 
-Replace ChatService execution flow with LangGraph.
+Execution Flow:
 
-Graph
+```text
+asyncio.run(main())
+
+↓
+
+await CLI.run()
+
+↓
+
+await ChatService.get_response()
+
+↓
+
+await ChatService.chat()
+
+↓
+
+await graph.ainvoke()
+
+↓
+
+await chatbot_node()
+
+↓
+
+await llm.ainvoke()
+```
+
+---
+
+# LangGraph
+
+---
+
+## ✅ GraphState
+
+Created:
+
+```python
+GraphState
+```
+
+Contains:
+
+```python
+messages
+```
+
+Using:
+
+```python
+Annotated[
+    list[BaseMessage],
+    add_messages,
+]
+```
+
+---
+
+## ✅ Chatbot Node
+
+Created:
+
+```python
+create_chatbot_node(
+    llm,
+    tools,
+)
+```
+
+Returns:
+
+```python
+chatbot_node(state)
+```
+
+Responsibilities:
+
+- Receive GraphState
+- Bind Tools
+- Invoke LLM
+- Return updated state
+
+---
+
+### Important Lesson Learned
+
+Never recreate AIMessage.
+
+Wrong:
+
+```python
+AIMessage(
+    content=response.content,
+)
+```
+
+Correct:
+
+```python
+return {
+    "messages": [
+        response,
+    ]
+}
+```
+
+Reason:
+
+Creating a new AIMessage removes:
+
+- tool_calls
+- metadata
+- response ID
+- usage metadata
+
+Without tool_calls the graph cannot execute tools.
+
+---
+
+## ✅ GraphBuilder
+
+Created:
 
 ```
+GraphBuilder
+```
+
+Responsibilities:
+
+- Build StateGraph
+- Register Nodes
+- Register Edges
+- Compile Graph
+
+---
+
+Current Graph:
+
+```text
 START
 
 ↓
 
-Planner
+Chatbot
 
 ↓
 
-Tools
+tools_condition
 
 ↓
 
-Memory
+ToolNode
 
 ↓
 
-LLM
+Chatbot
 
 ↓
 
@@ -615,121 +421,369 @@ END
 
 ---
 
-## Phase 7
+## ✅ Routing
 
-Tool Calling
+Using built-in LangGraph routing:
 
-Implement
-
-- Weather
-- News
-- Search
-- Calculator
-
----
-
-## Phase 8
-
-Streaming
-
-CLI streaming output.
-
-Instead of
-
-```
-Hello!
+```python
+tools_condition
 ```
 
-Display
+Instead of custom routing.
 
-```
-H
+LangGraph automatically decides:
 
-He
+```text
+Tool Needed?
 
-Hel
+YES
+ ↓
+ToolNode
 
-Hello
-
-Hello!
+NO
+ ↓
+END
 ```
 
 ---
 
-## Phase 9
-
-RAG Pipeline
-
-Implement
-
-- Document Loaders
-- Splitter
-- Embeddings
-- Vector Store
-- Retriever
-- Generator
-
-Supported Sources
-
-- PDF
-- Markdown
-- Website
-- CSV
+# Tool Calling
 
 ---
 
-## Phase 10
+## Weather Tool
 
-Production Features
+Implemented:
 
-- Multi-session support
-- Token tracking
-- Cost tracking
-- Retry logic
-- Rate limiting
-- Observability
-- Metrics
-- LangSmith
+```python
+get_weather()
+```
+
+Features:
+
+- OpenWeather API
+- Async HTTPX
+- Error Handling
+
+---
+
+## Google Search Tool
+
+Implemented.
+
+Current Status:
+
+✅ Working
+
+---
+
+## News Tool
+
+Implemented.
+
+Uses:
+
+- Tavily Search
+
+Needs:
+
+```
+TAVILY_API_KEY
+```
+
+---
+
+# ChatService
+
+Responsibilities:
+
+- Validate User Input
+- Load/Create Session
+- Save User Message
+- Load Conversation History
+- Execute LangGraph
+- Save Assistant Message
+- Return Final Response
+
+Important:
+
+ChatService no longer talks directly to the LLM.
+
+Everything goes through LangGraph.
+
+---
+
+# ReAct Agent
+
+Successfully implemented LangGraph ReAct workflow.
+
+Verified execution:
+
+```text
+HumanMessage
+
+↓
+
+AIMessage
+(tool_calls)
+
+↓
+
+ToolNode
+
+↓
+
+ToolMessage
+
+↓
+
+AIMessage
+(final answer)
+```
+
+This confirms:
+
+- Tool Binding
+- Tool Routing
+- Tool Execution
+- Final Reasoning
+
+are all working correctly.
+
+---
+
+# Major Bugs Solved
+
+## AIMessage Recreation
+
+Problem:
+
+Tool calls disappeared.
+
+Cause:
+
+Creating a new AIMessage.
+
+Solution:
+
+Return original response.
+
+---
+
+## Async Cascade
+
+Converted entire application to async.
+
+Every layer now supports async execution.
+
+---
+
+## SQLite Driver
+
+Changed:
+
+```
+sqlite://
+```
+
+to
+
+```
+sqlite+aiosqlite://
+```
+
+---
+
+## Dependency Injection
+
+Removed manual dependency creation.
+
+Introduced Bootstrap Layer.
+
+---
+
+## Repository Bugs
+
+Fixed incorrect model handling.
+
+Corrected SQLAlchemy usage.
+
+---
+
+## SQLite Tables
+
+Added:
+
+```python
+await init_database()
+```
+
+during application startup.
+
+---
+
+# Current Working Features
+
+| Feature | Status |
+|----------|--------|
+| CLI | ✅ |
+| Async Architecture | ✅ |
+| Dependency Injection | ✅ |
+| SQLite Sessions | ✅ |
+| In-Memory History | ✅ |
+| LangGraph | ✅ |
+| Tool Calling | ✅ |
+| Weather Tool | ✅ |
+| Search Tool | ✅ |
+| News Tool | ✅ |
+| ReAct Agent | ✅ |
+
+---
+
+# Folder Structure
+
+```text
+core/
+│
+├── bootstrap.py
+│
+├── graph/
+│   ├── graph.py
+│   ├── nodes.py
+│   └── state.py
+│
+├── llm/
+│   └── manager.py
+│
+├── memory/
+│   ├── history.py
+│   └── session.py
+│
+├── database/
+│   ├── db.py
+│   ├── models/
+│   └── repositories/
+│
+├── tools/
+│   ├── weather.py
+│   ├── search.py
+│   └── news.py
+│
+services/
+│
+└── chat_service.py
+│
+interfaces/
+│
+└── cli/
+```
+
+---
+
+# Learning Achievements
+
+Completed:
+
+- ✅ Python Async
+- ✅ SQLAlchemy Async
+- ✅ Repository Pattern
+- ✅ Dependency Injection
+- ✅ LangChain Basics
+- ✅ LangGraph Basics
+- ✅ StateGraph
+- ✅ GraphState
+- ✅ Nodes
+- ✅ Edges
+- ✅ Conditional Routing
+- ✅ ToolNode
+- ✅ ReAct Pattern
+- ✅ Tool Calling
+
+---
+
+# Next Learning Phase
+
+## LangGraph Checkpointers
+
+Topics to Learn:
+
+- What is a Checkpointer?
+- Why LangGraph uses Checkpointers
+- MemorySaver
+- SQLite Checkpointer
+- Thread IDs
+- Resuming Conversations
+- Graph Persistence
+- Difference between:
+  - SessionManager
+  - HistoryManager
+  - Checkpointer
+
+---
+
+# Long-Term Roadmap
+
+```text
+✅ Foundation
+
+✅ Configuration
+
+✅ Logger
+
+✅ CLI
+
+✅ LLM Manager
+
+✅ Session Management
+
+✅ Conversation History
+
+✅ SQLite
+
+✅ Dependency Injection
+
+✅ LangGraph Basics
+
+✅ ReAct Agent
+
+────────────────────────────
+
+⬜ LangGraph Checkpointers
+
+⬜ Streaming
+
+⬜ Long-Term Memory
+
+⬜ RAG
+
+⬜ Memory Summarization
+
+⬜ Multi-Step Planning
+
+⬜ Multi-Agent Architecture
+
+⬜ Human-in-the-Loop
+
+⬜ Observability
+
+⬜ Production Deployment
+```
 
 ---
 
 # Current Milestone
 
-✅ Phase 1 Completed Successfully
+🎉 **Milestone Achieved: Production-Style LangGraph ReAct Agent**
 
-The application can now:
+The application now supports:
 
-- Load configuration
-- Initialize the correct LLM provider
-- Send prompts
-- Receive responses
-- Log execution
-- Maintain a clean layered architecture
+- Modular architecture
+- Async execution
+- SQLite session persistence
+- LangGraph state management
+- Automatic tool calling
+- Multiple tools
+- ReAct reasoning loop
+- Clean dependency injection
 
-This serves as the stable foundation for all future LangGraph, memory, tools, and RAG features.
-
----
-
-# Next Development Task
-
-Build the CLI layer.
-
-Implementation order
-
-```
-renderer.py
-
-↓
-
-cli.py
-
-↓
-
-commands.py
-
-↓
-
-streaming.py
-```
-
-Only after the CLI is complete will memory, LangGraph, and RAG be introduced.
+This serves as the stable foundation for learning advanced LangGraph concepts such as Checkpointers, Streaming, RAG, and Multi-Agent systems.
