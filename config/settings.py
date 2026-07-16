@@ -145,7 +145,7 @@ class Settings(BaseSettings):
 
     weather_api_key: str | None = Field(
         default=None,
-        alias="WEATHER_API_KEY",
+        alias="OPENWEATHER_API_KEY",
     )
 
     weather_api_url: str = Field(alias="OPENWEATHER_BASE_URL")
@@ -161,9 +161,9 @@ class Settings(BaseSettings):
         alias="SEARCH_PROVIDER",
     )
 
-    serpapi_key: str | None = Field(
+    serper_api_key: str | None = Field(
         default=None,
-        alias="SERPAPI_KEY",
+        alias="SERPER_API_KEY",
     )
 
     tavily_api_key: str | None = Field(

@@ -45,6 +45,7 @@ aiosqlite
 
 # Tools
 httpx
+langchain_tavily
 # duckduckgo-search
 
 #----------------------

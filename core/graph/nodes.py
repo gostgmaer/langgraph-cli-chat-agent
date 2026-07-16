@@ -11,17 +11,22 @@
 
 
 from langchain_core.messages import AIMessage
+from langchain_core.tools import BaseTool
 from core.graph.state import GraphState
 from core.llm.manager import LLMManager
 
 
 def create_chatbot_node(
     llm: LLMManager,
+    tools: list[BaseTool],
 ):
-    def chatbot_node(
+    tool_enabled_llm = llm.bind_tools(tools)
+
+    async def chatbot_node(
         state: GraphState,
     ):
         messages = state["messages"]
-        response = llm.invoke(messages)
+        response = await tool_enabled_llm.ainvoke(messages)
         return {"messages": [AIMessage(content=response.content)]}
+
     return chatbot_node

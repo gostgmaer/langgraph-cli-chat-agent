@@ -9,6 +9,7 @@
 # ============================================================
 
 from typing import Any
+from langchain.tools import BaseTool
 from langchain_core.language_models import LanguageModelInput
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage
@@ -97,6 +98,14 @@ class LLMManager:
         async for chunk in self._model.astream(input, **kwargs):
             yield chunk
 
+    def bind_tools(
+        self,
+        tools: list[BaseTool],
+    ) -> BaseChatModel:
+        """Return a tool-enabled chat model."""
+        logger.debug("Binding %d tools to LLM.", len(tools))
+        return self._model.bind_tools(tools)
+
     @property
     def model(self) -> BaseChatModel:
         return self._model
@@ -106,5 +115,6 @@ class LLMManager:
             "provider": self._provider.value,
             "model": self._model_name,
         }
+
 
 llm = LLMManager()

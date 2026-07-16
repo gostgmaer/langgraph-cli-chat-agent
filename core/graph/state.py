@@ -19,9 +19,14 @@ from langchain_core.messages import BaseMessage
 
 class AgentState(TypedDict):
     """Shared state flowing through the graph."""
+    """Shared state for the LangGraph workflow."""
 
+    # route: str | None
+    # action: str | None
     messages: Annotated[list[BaseMessage], add_messages]
 
 class GraphState(MessagesState):
-    """Shared state for the AI Agent."""
-    pass
+   """Shared state for the LangGraph workflow."""
+
+   route: str | None
+   action: str | None
