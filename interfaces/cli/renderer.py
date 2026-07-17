@@ -1,54 +1,34 @@
 from rich.console import Console
 from rich.markdown import Markdown
-from rich.panel import Panel
-from rich.text import Text
 from rich.rule import Rule
 from rich.status import Status
 from rich.live import Live
-from rich.align import Align
-from rich.box import ROUNDED
 from rich import print
 
 from config.settings import settings
 
 
 class CLIRenderer:
-    """Rich terminal renderer."""
+    """Rich terminal renderer (Classic CLI Style)."""
 
     def __init__(self) -> None:
         self.console = Console()
         self._stream_buffer = ""
+        self._live = None
 
     # ------------------------------------------------------------------
     # Banner
     # ------------------------------------------------------------------
 
     def print_banner(self) -> None:
-
-        title = Text(
-            settings.app_name,
-            style="bold cyan",
-            justify="center",
-        )
-
-        subtitle = Text(
-            f"Version {settings.app_version} • {settings.llm_provider.value.upper()} • {settings.llm_model}",
-            style="dim",
-            justify="center",
-        )
-
         self.console.print()
-
+        # Proper, clean heading without heavy boxes
+        self.console.print(f"[bold cyan]{settings.app_name}[/bold cyan]", justify="center")
         self.console.print(
-            Panel.fit(
-                Align.center(Text.assemble(title, "\n", subtitle)),
-                border_style="cyan",
-                box=ROUNDED,
-                padding=(1, 6),
-            )
+            f"[dim]Version {settings.app_version} • {settings.llm_provider.value.upper()} • {settings.llm_model}[/dim]",
+            justify="center"
         )
-
-        self.console.print(Rule("[bold cyan]Interactive Chat Session[/bold cyan]"))
+        self.console.print(Rule(style="cyan"))
 
     # ------------------------------------------------------------------
     # User
@@ -58,18 +38,8 @@ class CLIRenderer:
         self,
         message: str,
     ) -> None:
-
-        self.console.print()
-
-        self.console.print(
-            Panel(
-                Markdown(message),
-                title="👤 You",
-                title_align="left",
-                border_style="green",
-                expand=True,
-            )
-        )
+        self.console.print("\n[bold green]👤 You:[/bold green]")
+        self.console.print(message)
 
     # ------------------------------------------------------------------
     # Assistant
@@ -79,59 +49,35 @@ class CLIRenderer:
         self,
         message: str,
     ) -> None:
-
-        self.console.print()
-
-        self.console.print(
-            Panel(
-                Markdown(message),
-                title="🤖 Assistant",
-                title_align="left",
-                border_style="blue",
-                expand=True,
-            )
-        )
+        self.console.print("\n[bold blue]🤖 Assistant:[/bold blue]")
+        self.console.print(Markdown(message))
 
     # ------------------------------------------------------------------
     # Streaming
     # ------------------------------------------------------------------
 
     def start_assistant_message(self):
-
+        self.console.print("\n[bold blue]🤖 Assistant:[/bold blue]")
         self._stream_buffer = ""
-
+        
+        # Stream markdown directly without wrapping it in a Panel
         self._live = Live(
-            Panel(
-                "",
-                title="🤖 Assistant",
-                border_style="blue",
-                expand=True,
-            ),
+            Markdown(self._stream_buffer),
             console=self.console,
             refresh_per_second=30,
         )
-
         self._live.start()
 
     def stream_token(
         self,
         token: str,
     ):
-
         self._stream_buffer += token
-
-        self._live.update(
-            Panel(
-                Markdown(self._stream_buffer),
-                title="🤖 Assistant",
-                border_style="blue",
-                expand=True,
-            )
-        )
+        self._live.update(Markdown(self._stream_buffer))
 
     def finish_assistant_message(self):
-
-        self._live.stop()
+        if self._live:
+            self._live.stop()
 
     # ------------------------------------------------------------------
     # Status
@@ -141,9 +87,8 @@ class CLIRenderer:
         self,
         message: str,
     ) -> Status:
-
         return self.console.status(
-            message,
+            f"[bold magenta]{message}[/bold magenta]",
             spinner="dots",
         )
 
@@ -156,15 +101,8 @@ class CLIRenderer:
         tool: str,
         args: str,
     ):
-
-        self.console.print(
-            Panel(
-                args,
-                title=f"🔧 {tool}",
-                border_style="yellow",
-                expand=True,
-            )
-        )
+        self.console.print(f"\n[bold yellow]🔧 Tool Call: {tool}[/bold yellow]")
+        self.console.print(f"[dim]{args}[/dim]")
 
     # ------------------------------------------------------------------
     # Session
@@ -174,14 +112,7 @@ class CLIRenderer:
         self,
         session_id: str,
     ):
-
-        self.console.print(
-            Panel.fit(
-                f"[cyan]{session_id}[/cyan]",
-                title="Session",
-                border_style="cyan",
-            )
-        )
+        self.console.print(f"[dim cyan]Session ID: {session_id}[/dim cyan]")
 
     # ------------------------------------------------------------------
     # System
@@ -191,14 +122,7 @@ class CLIRenderer:
         self,
         message: str,
     ):
-
-        self.console.print(
-            Panel.fit(
-                message,
-                title="System",
-                border_style="yellow",
-            )
-        )
+        self.console.print(f"\n[bold yellow]⚙️ System:[/bold yellow] {message}")
 
     # ------------------------------------------------------------------
     # Error
@@ -208,24 +132,14 @@ class CLIRenderer:
         self,
         message: str,
     ):
-
-        self.console.print(
-            Panel(
-                message,
-                title="❌ Error",
-                border_style="red",
-                expand=True,
-            )
-        )
+        self.console.print(f"\n[bold red]❌ Error:[/bold red] {message}")
 
     # ------------------------------------------------------------------
     # Misc
     # ------------------------------------------------------------------
 
     def separator(self):
-
-        self.console.print(Rule())
+        self.console.print(Rule(style="dim"))
 
     def clear(self):
-
         self.console.clear()
