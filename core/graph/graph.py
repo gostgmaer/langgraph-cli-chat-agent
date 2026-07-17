@@ -1,7 +1,7 @@
 from langgraph.graph import StateGraph
 from langgraph.graph import START, END
 from langgraph.prebuilt import ToolNode
-
+from IPython.display import Image, display
 from core.graph.nodes import create_chatbot_node
 from core.graph.state import GraphState
 from core.llm.manager import LLMManager
@@ -47,4 +47,10 @@ class GraphBuilder:
         # builder.set_checkpointer(checkpointer)
         graph = builder.compile(checkpointer=self._checkpointer)
         # 6. Return compiled graph
+        png = graph.get_graph().draw_mermaid_png()
+
+        with open("graph.png", "wb") as f:
+             f.write(png)
+
+        print("Graph saved as graph.png")
         return graph
