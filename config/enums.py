@@ -82,3 +82,9 @@ class LogFormat(StrEnum):
     RICH = "rich"
     JSON = "json"
     PLAIN = "plain"
+
+class StorageProvider(StrEnum):
+    LOCAL = "local"
+    S3 = "s3"
+    AZURE = "azure"
+    MINIO = "minio"
