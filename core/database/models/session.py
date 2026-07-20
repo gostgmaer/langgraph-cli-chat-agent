@@ -10,9 +10,7 @@ class SessionModel(Base):
     """Database model for chat sessions."""
 
     __tablename__ = "sessions"
-    from datetime import datetime, UTC
 
-    default = lambda: datetime.now(UTC)
     id: Mapped[str] = mapped_column(primary_key=True)
 
     title: Mapped[str] = mapped_column(nullable=False)

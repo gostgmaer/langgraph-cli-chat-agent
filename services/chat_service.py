@@ -11,9 +11,7 @@ from collections.abc import AsyncGenerator
 
 from langchain.messages import AIMessage, HumanMessage
 from langchain_core.messages import BaseMessage
-from requests import session
 
-from core.database.models import message
 from core.database.repositories.session_repository import SessionRepository
 from core.llm.formatter import LLMResponseFormatter
 from core.llm.manager import LLMManager, llm
@@ -87,7 +85,7 @@ class ChatService:
         #         }
         #     },
         # )
-        state = await self._graph.astream(
+        state = await self._graph.ainvoke(
             {
                 "messages": messages,
             },
