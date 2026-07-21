@@ -8,7 +8,7 @@
 # ============================================================
 
 
-from langchain_tavily import TavilySearchResults
+from langchain_tavily import TavilySearch
 from langchain.tools import tool
 
 from config.settings import settings
@@ -26,7 +26,7 @@ async def get_news(topic: str):
         return "Tavily API key is missing."
 
     try:
-        search = TavilySearchResults(
+        search = TavilySearch(
             max_results=5,
             tavily_api_key=settings.tavily_api_key,
         )
