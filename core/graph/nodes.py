@@ -37,3 +37,27 @@ def create_chatbot_node(
         }
 
     return chatbot_node
+
+
+def create_refiner_node(
+    llm: LLMManager,
+):
+    async def refiner_node(
+        state: GraphState,
+    ):
+        messages = state["messages"]
+        from langchain_core.messages import SystemMessage
+        
+        system_prompt = SystemMessage(content="You are an expert assistant and editor. Based on the conversation history and any tool results, provide a clear, accurate, and highly polished final answer. Do not repeat words endlessly. Stop when your thought is complete.")
+        
+        prompt = [system_prompt] + messages
+        
+        response = await llm.ainvoke(prompt)
+        logger.debug("Refined Content: %s", response.content)
+        return {
+            "messages": [
+                AIMessage(content=response.content, name="refiner"),
+            ]
+        }
+
+    return refiner_node

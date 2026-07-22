@@ -24,9 +24,9 @@ from collections.abc import Iterator, AsyncIterator
 
 
 class LLMManager:
-    def __init__(self):
-        self._provider = settings.llm_provider
-        self._model_name = settings.llm_model
+    def __init__(self, provider: LLMProvider | None = None, model_name: str | None = None):
+        self._provider = provider or settings.llm_provider
+        self._model_name = model_name or settings.llm_model
 
         self._temperature = settings.llm_temperature
         self._max_tokens = settings.llm_max_tokens

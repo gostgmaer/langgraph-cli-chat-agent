@@ -53,7 +53,7 @@ async def get_weather(city: str):
     logger.debug("Weather tool executed for %s", city)
     try:
         response = await client.get(
-            settings.weather_api_url,
+            f"{settings.weather_api_url}/weather",
             params={
                 "q": city,
                 "appid": settings.weather_api_key,

@@ -33,7 +33,7 @@ class GraphBuilder:
         # 3. Connect START -> chatbot
         builder.add_edge(START, "chatbot")
 
-        # 4. Connect chatbot -> END
+        # 4. Connect chatbot -> END or tools
         builder.add_conditional_edges("chatbot", tools_condition)
 
         builder.add_edge(

@@ -25,6 +25,7 @@ class SupportedModel(StrEnum):
     GEMINI_2_5_PRO = "gemini-2.5-pro"
     GEMINI_2_5_FLASH = "gemini-2.5-flash"
     GEMINI_2_5_FLASH_LITE = "gemini-2.5-flash-lite"
+    GEMINI_3_1_FLASH_LITE = "gemini-3.1-flash-lite"
 
     # Gemini Embeddings
     GEMINI_EMBEDDING_2 = "gemini-embedding-2"
@@ -34,6 +35,7 @@ class SupportedModel(StrEnum):
     GEMMA_3_4B = "gemma-3-4b-it"
     GEMMA_3_12B = "gemma-3-12b-it"
     GEMMA_3_27B = "gemma-3-27b-it"
+    GEMMA_4_31B = "gemma-4-31b-it"
 
     GEMMA_3N_E2B = "gemma-3n-e2b-it"
     GEMMA_3N_E4B = "gemma-3n-e4b-it"
