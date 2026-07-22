@@ -48,10 +48,7 @@ class ChatService:
             raise ValueError("Message cannot be empty.")
 
         # 2. Get or create current session
-        session = await self._session_manager.get_current_session()
-
-        if session is None:
-            session = await self._session_manager.create_session()
+        session = await self._session_manager.get_or_create()
 
         logger.debug("Using session %s", session.id)
 
@@ -126,10 +123,7 @@ class ChatService:
         if not user_message.strip():
             raise ValueError("Message cannot be empty.")
 
-        session = await self._session_manager.get_current_session()
-
-        if session is None:
-            session = await self._session_manager.create_session()
+        session = await self._session_manager.get_or_create()
 
         config = {
             "configurable": {

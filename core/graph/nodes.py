@@ -27,14 +27,34 @@ def create_chatbot_node(
         state: GraphState,
     ):
         messages = state["messages"]
-        response = await tool_enabled_llm.ainvoke(messages)
+        preferences = state.get("user_preferences", {})
+        
+        from langchain_core.messages import SystemMessage
+        sys_msg = SystemMessage(
+            content=f"You are a helpful AI assistant. Remember and use the following user preferences: {preferences}. "
+                    f"If the user shares a new preference (e.g. name, language, favorite color), use the save_preference tool."
+        )
+        
+        response = await tool_enabled_llm.ainvoke([sys_msg] + messages)
+        
         logger.debug("Content: %s", response.content)
         logger.debug("Tool Calls: %s", response.tool_calls)
-        return {
-            "messages": [
-                response,
-            ]
+        
+        state_update = {
+            "messages": [response]
         }
+        
+        # Intercept preference saving
+        if hasattr(response, "tool_calls"):
+            for tc in response.tool_calls:
+                if tc["name"] == "save_preference":
+                    key = tc["args"]["key"]
+                    val = tc["args"]["value"]
+                    if "user_preferences" not in state_update:
+                        state_update["user_preferences"] = {}
+                    state_update["user_preferences"][key] = val
+                    
+        return state_update
 
     return chatbot_node
 

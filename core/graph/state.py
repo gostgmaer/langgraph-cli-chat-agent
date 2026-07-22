@@ -10,23 +10,29 @@
 
 
 
-from typing import Annotated, TypedDict
+from typing import Annotated, TypedDict, Any
+import operator
 
 from langgraph.graph.message import add_messages
 from langgraph.graph import MessagesState
 from langchain_core.messages import BaseMessage
 
 
+def update_preferences(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
+    """Reducer that merges the new dictionary into the existing one."""
+    if not left:
+        left = {}
+    if not right:
+        right = {}
+    return {**left, **right}
+
+
 class AgentState(TypedDict):
     """Shared state flowing through the graph."""
-    """Shared state for the LangGraph workflow."""
-
-    # route: str | None
-    # action: str | None
     messages: Annotated[list[BaseMessage], add_messages]
 
 class GraphState(MessagesState):
    """Shared state for the LangGraph workflow."""
-
    route: str | None
    action: str | None
+   user_preferences: Annotated[dict[str, Any], update_preferences]

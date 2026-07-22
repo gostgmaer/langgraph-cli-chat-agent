@@ -46,7 +46,12 @@ class SessionRepository:
         await self._session.commit()
 
     async def get_active_session(self) -> SessionModel | None:
-        stmt = select(SessionModel).where(SessionModel.is_active == True).limit(1)
+        stmt = (
+            select(SessionModel)
+            .where(SessionModel.is_active == True)
+            .order_by(SessionModel.updated_at.desc())
+            .limit(1)
+        )
 
         result = await self._session.execute(stmt)
 

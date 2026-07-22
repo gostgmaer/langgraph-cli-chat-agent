@@ -7,6 +7,7 @@ from core.llm.manager import LLMManager
 from core.tools.news import get_news
 from core.tools.search import get_google_search
 from core.tools.weather import get_weather
+from core.tools.preferences import save_preference
 from langgraph.prebuilt import tools_condition
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
@@ -20,7 +21,7 @@ class GraphBuilder:
         builder = StateGraph(GraphState)
 
         # tools
-        tools = [get_weather, get_google_search, get_news]
+        tools = [get_weather, get_google_search, get_news, save_preference]
         # 2. Add chatbot node
         builder.add_node("chatbot", create_chatbot_node(self._llm, tools))
         # 2. Add Tool node
