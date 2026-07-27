@@ -1,6 +1,5 @@
 from typing import Literal
 from langgraph.types import Command
-from pydantic import BaseModel, Field
 
 from core.graph.research.state import ResearchState
 from core.llm.manager import LLMManager
@@ -10,19 +9,9 @@ from core.llm.models import SupportedModel
 MAX_REVISIONS = 2
 
 
-class ConsistencyReview(BaseModel):
-    is_consistent: bool = Field(
-        description="True if the draft is fully supported by the research findings."
-    )
-    issues: list[str] = Field(
-        default_factory=list, description="Specific unsupported claims or inaccuracies, if any."
-    )
-
-
 _llm = LLMManager(
     provider=LLMProvider.GOOGLE, model_name=SupportedModel.GEMINI_3_1_FLASH_LITE
 )
-_reviewer_llm = _llm.model.with_structured_output(ConsistencyReview)
 
 
 def reviewer_agent(
@@ -38,12 +27,22 @@ def reviewer_agent(
     draft = str(state.get("draft", ""))
 
     try:
-        review = _reviewer_llm.invoke(
+        # Use plain LLM with explicit JSON instruction to avoid raw JSON leaking into state messages
+        raw = _llm.model.invoke(
             f"Research findings:\n{findings}\n\nDraft answer:\n{draft}\n\n"
-            f"Does the draft make any claim NOT supported by the findings?"
+            f"Reply ONLY with a JSON object: {{\"is_consistent\": true/false, \"issues\": [\"list of issues if any\"]}}.\n"
+            f"Set is_consistent=true if draft is fully supported. Set false and list issues if not."
         )
-        is_consistent = review.is_consistent if review and hasattr(review, "is_consistent") else True
-        issues = review.issues if review and hasattr(review, "issues") else []
+        import json, re
+        raw_text = raw.content if isinstance(raw.content, str) else str(raw.content)
+        match = re.search(r'\{.*\}', raw_text, re.DOTALL)
+        if match:
+            parsed = json.loads(match.group())
+            is_consistent = bool(parsed.get("is_consistent", True))
+            issues = parsed.get("issues", [])
+        else:
+            is_consistent = True
+            issues = []
     except Exception:
         is_consistent = True
         issues = []

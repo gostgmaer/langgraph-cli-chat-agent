@@ -1,9 +1,10 @@
-from typing import Annotated, Literal, TypedDict
+from typing import Annotated, Any, Literal, TypedDict
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from langchain_core.messages import AnyMessage, HumanMessage
 from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.checkpoint.base import BaseCheckpointSaver
+import operator
 
 from core.graph.nodes import create_chatbot_node
 from core.graph.research.graph import ResearchGraphBuilder
@@ -13,9 +14,12 @@ from core.tools.news import get_news
 from core.tools.search import get_google_search
 from core.tools.weather import get_weather
 from core.tools.preferences import save_preference
+from core.graph.state import update_preferences
 
 
-import operator
+def _replace_list(left: list, right: list) -> list:
+    """Replace reducer — new value fully replaces old (not append)."""
+    return right if right is not None else left
 
 
 class State(TypedDict, total=False):
@@ -23,11 +27,12 @@ class State(TypedDict, total=False):
     messages: Annotated[list[AnyMessage], add_messages]
     intent: str
     question: str
-    sub_questions: list[str]
-    search_results: Annotated[list[str], operator.add]
+    sub_questions: Annotated[list[str], _replace_list]
+    search_results: Annotated[list[str], _replace_list]
     revision_count: int
     draft: str
     final_answer: str
+    user_preferences: Annotated[dict[str, Any], update_preferences]
 
 
 def router_node(state: State) -> dict:
@@ -50,7 +55,7 @@ def router_node(state: State) -> dict:
         return {
             "intent": "research",
             "question": topic,
-            # Hard-reset all research fields to prevent stale checkpoint state
+            # Hard-reset ALL research fields to prevent stale checkpoint state
             "sub_questions": [],
             "search_results": [],
             "draft": "",

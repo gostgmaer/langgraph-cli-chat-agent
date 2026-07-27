@@ -68,7 +68,7 @@ class Settings(BaseSettings):
     )
 
     llm_max_tokens: int = Field(
-        default=2048,
+        default=32500,
         alias="LLM_MAX_TOKENS",
     )
 
