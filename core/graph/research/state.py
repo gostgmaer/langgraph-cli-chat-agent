@@ -1,4 +1,5 @@
 
+from ast import operator
 from typing import Annotated
 
 from langgraph.graph.message import add_messages
@@ -10,7 +11,8 @@ class ResearchState(TypedDict):
     """Share state for research operations"""
     messages: Annotated[list[AnyMessage],add_messages]
     question: str
-    search_results:str
+    search_results: Annotated[list[str], operator.add]
+    revision_count: int
     draft:str
     final_answer:str
 

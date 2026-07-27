@@ -8,17 +8,15 @@
 # ============================================================
 
 
-
 import os
 
 from langchain_core.tools import tool
 from config.settings import settings
 from langchain_community.utilities import GoogleSerperAPIWrapper
 
+from shared import logger
 
-search = GoogleSerperAPIWrapper(
-    serper_api_key=settings.serper_api_key
-)
+search = GoogleSerperAPIWrapper(serper_api_key=settings.serper_api_key)
 
 
 @tool(
@@ -36,5 +34,9 @@ def get_google_search(topic: str) -> dict:
     Returns:
         Structured Google search results.
     """
-    
-    return search.results(query=topic,)
+
+    try:
+        return search.results(query=topic)
+    except Exception as e:
+        logger.exception("Google search tool failed")
+        return f"Unable to reach the search service: {e}"
