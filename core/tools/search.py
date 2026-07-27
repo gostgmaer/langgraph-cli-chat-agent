@@ -21,10 +21,10 @@ search = GoogleSerperAPIWrapper(serper_api_key=settings.serper_api_key)
 
 @tool(
     "get_google_search",
-    description="Get the latest news for a given topic.",
+    description="Search Google for general, up-to-date information on a topic.",
     return_direct=False,
 )
-def get_google_search(topic: str) -> dict:
+def get_google_search(topic: str) -> str:
     """
     Search Google for the given topic and return live search results.
 
@@ -36,7 +36,8 @@ def get_google_search(topic: str) -> dict:
     """
 
     try:
-        return search.results(query=topic)
+        res = search.results(query=topic)
+        return str(res)
     except Exception as e:
         logger.exception("Google search tool failed")
         return f"Unable to reach the search service: {e}"

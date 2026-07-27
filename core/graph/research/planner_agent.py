@@ -1,37 +1,48 @@
 from typing import Literal
 
-from langgraph.types import Command
+from langgraph.types import Command, Send
 from pydantic import BaseModel, Field
-from langchain_core.messages import SystemMessage, HumanMessage
 from config.enums import LLMProvider
 from core.graph.research.state import ResearchState
-from core.graph.research.prompts import PLANNER_AGENT_PROMPT
 from core.llm.manager import LLMManager
 from core.llm.models import SupportedModel
 
 
 class SubQuestions(BaseModel):
     sub_questions: list[str] = Field(
-        description="List of sub-questions to be addressed"
-        "2-4 focused, independently-searchable sub-questions "
-        "that together cover the original question."
+        description="2-4 focused, independently-searchable sub-questions that together cover the main question."
     )
 
 
 _llm = LLMManager(
     provider=LLMProvider.GOOGLE, model_name=SupportedModel.GEMINI_3_1_FLASH_LITE
 )
-_planner_llm = _llm.model.with_structured_output(
-    SubQuestions
-)  # returns a bound chat model, not an LLMManager
+_planner_llm = _llm.model.with_structured_output(SubQuestions)
 
 
 def planner_agent(state: ResearchState) -> Command[Literal["dispatch_search"]]:
-    result = _planner_llm.invoke(
-        f"Break this question into 2-4 independent, web-searchable "
-        f"sub-questions:\n\n{state['question']}"
-    )
-    return Command(
-        update={"sub_questions": result.sub_questions}, goto="dispatch_search"
-    )
+    """Breaks main question into sub-questions for parallel search execution."""
+    q = state.get("question", "")
+    if isinstance(q, list):
+        q = "".join(str(item) for item in q)
+
+    try:
+        result = _planner_llm.invoke(
+            f"Break this research topic into 2-3 focused sub-questions for parallel web search:\n\n{q}"
+        )
+        questions = result.sub_questions if result and hasattr(result, "sub_questions") else [q]
+    except Exception:
+        questions = [q]
+
+    return Command(update={"sub_questions": questions})
+
+
+def dispatch_search(state: ResearchState) -> Command:
+    """Map step: dynamic parallel fan-out sending sub-questions to search_agent."""
+    sub_qs = state.get("sub_questions") or [state.get("question", "")]
+    sends = [
+        Send("search_agent", {"question": sq, "messages": []})
+        for sq in sub_qs
+    ]
+    return Command(goto=sends)
 

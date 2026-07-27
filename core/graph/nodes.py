@@ -35,7 +35,18 @@ def create_chatbot_node(
                     f"If the user shares a new preference (e.g. name, language, favorite color), use the save_preference tool."
         )
         
-        response = await tool_enabled_llm.ainvoke([sys_msg] + messages)
+        formatted_messages = []
+        for m in messages:
+            if hasattr(m, "content") and isinstance(m.content, list):
+                text_content = "".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in m.content)
+                formatted_messages.append(type(m)(content=text_content))
+            elif isinstance(m, dict) and isinstance(m.get("content"), list):
+                text_content = "".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in m["content"])
+                formatted_messages.append({**m, "content": text_content})
+            else:
+                formatted_messages.append(m)
+
+        response = await tool_enabled_llm.ainvoke([sys_msg] + formatted_messages)
         
         logger.debug("Content: %s", response.content)
         logger.debug("Tool Calls: %s", response.tool_calls)

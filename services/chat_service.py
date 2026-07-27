@@ -16,27 +16,24 @@ from core.database.repositories.session_repository import SessionRepository
 from core.llm.formatter import LLMResponseFormatter
 from core.llm.manager import LLMManager, llm
 
-# from core.memory.history import HistoryManager
 from core.memory.session import SessionManager
 from shared.logger import logger
 from core.graph.graph import GraphBuilder
 
 
 class ChatService:
-    """Coordinates the complete chat workflow."""
+    """Coordinates the complete chat workflow using the GraphBuilder."""
 
     def __init__(
         self,
         llm: LLMManager,
         session_manager: SessionManager,
-        # history_manager: HistoryManager,
         checkpointer,
         checkpoint_manager,
     ) -> None:
 
         self._session_manager = session_manager
         self._checkpoint_manager = checkpoint_manager
-        # self._history_manager = history_manager
         self._checkpointer = checkpointer
         self._graph = GraphBuilder(llm, checkpointer=checkpointer).build()
 
@@ -131,6 +128,7 @@ class ChatService:
             }
         }
 
+        has_streamed = False
         async for event in self._graph.astream_events(
             {
                 "messages": [
@@ -140,18 +138,33 @@ class ChatService:
             config=config,
             version="v2",
         ):
-
             if event["event"] == "on_chat_model_stream":
-
                 chunk = event["data"]["chunk"]
-
-                if isinstance(chunk.content, str):
+                if isinstance(chunk.content, str) and chunk.content:
+                    has_streamed = True
                     yield chunk.content
-
                 elif isinstance(chunk.content, list):
                     for block in chunk.content:
-                        if isinstance(block, dict) and block.get("type") == "text":
+                        if isinstance(block, dict) and block.get("type") == "text" and block.get("text"):
+                            has_streamed = True
                             yield block.get("text", "")
+
+        # Subgraph / Multi-Agent response fallback if tokens were not streamed directly
+        if not has_streamed:
+            current_state = await self._graph.aget_state(config)
+            state_values = current_state.values if current_state else {}
+            final_ans = state_values.get("final_answer")
+            if final_ans:
+                if isinstance(final_ans, list):
+                    yield "".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in final_ans)
+                else:
+                    yield str(final_ans)
+            elif state_values.get("messages"):
+                last_msg_content = getattr(state_values["messages"][-1], "content", "")
+                if isinstance(last_msg_content, list):
+                    yield "".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in last_msg_content)
+                else:
+                    yield str(last_msg_content)
         
     # async def get_response(self, user_message: str) -> str:
     #     """Return formatted assistant text."""

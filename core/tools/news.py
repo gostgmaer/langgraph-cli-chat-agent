@@ -35,7 +35,7 @@ async def get_news(topic: str):
 
         logger.debug("News tool executed for %s", topic)
 
-        return results
+        return str(results)
 
     except Exception as e:
         logger.exception("News tool failed")
