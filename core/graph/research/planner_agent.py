@@ -1,21 +1,14 @@
+import json
+import re
 from typing import Literal
 
 from langgraph.types import Command, Send
-from pydantic import BaseModel, Field
-from config.enums import LLMProvider
+
 from core.graph.research.state import ResearchState
 from core.llm.manager import LLMManager
-from core.llm.models import SupportedModel
-
-
-class SubQuestions(BaseModel):
-    sub_questions: list[str] = Field(
-        description="7-10 focused, independently-searchable sub-questions that together cover the main question."
-    )
-
+from shared.logger import logger
 
 _llm = LLMManager()
-_planner_llm = _llm.model.with_structured_output(SubQuestions)
 
 
 def planner_agent(state: ResearchState) -> Command[Literal["dispatch_search"]]:
@@ -24,13 +17,39 @@ def planner_agent(state: ResearchState) -> Command[Literal["dispatch_search"]]:
     if isinstance(q, list):
         q = "".join(str(item) for item in q)
 
+    questions = [q]
     try:
-        result = _planner_llm.invoke(
-            f"Break this research topic into 7-10 focused sub-questions for parallel web search:\n\n{q}"
+        # A manual JSON-instruction + regex-parse, rather than
+        # with_structured_output(), matches what reviewer_agent already
+        # does -- structured-output tool schemas aren't reliably honored
+        # by every provider/model (e.g. local/cloud Ollama models).
+        raw = _llm.model.invoke(
+            "Break this research topic into 7-10 focused, independently "
+            "web-searchable sub-questions that together cover it.\n\n"
+            f"Topic: {q}\n\n"
+            'Reply ONLY with a JSON object: {"sub_questions": ["...", "..."]}.'
         )
-        questions = result.sub_questions if result and hasattr(result, "sub_questions") else [q]
+        raw_text = raw.content if isinstance(raw.content, str) else str(raw.content)
+        match = re.search(r"\{.*\}", raw_text, re.DOTALL)
+        if match:
+            parsed = json.loads(match.group())
+            parsed_questions = parsed.get("sub_questions")
+            if isinstance(parsed_questions, list) and parsed_questions:
+                questions = [str(sq) for sq in parsed_questions]
+            else:
+                logger.warning(
+                    "Planner agent got no usable sub_questions from model output; "
+                    "falling back to the original question."
+                )
+        else:
+            logger.warning(
+                "Planner agent found no JSON object in model output; "
+                "falling back to the original question."
+            )
     except Exception:
-        questions = [q]
+        logger.exception(
+            "Planner agent failed to generate sub-questions; falling back to the original question."
+        )
 
     return Command(update={"sub_questions": questions})
 
@@ -43,4 +62,3 @@ def dispatch_search(state: ResearchState) -> Command:
         for sq in sub_qs
     ]
     return Command(goto=sends)
-
