@@ -2,61 +2,81 @@ from typing import Literal
 from langchain_core.messages import HumanMessage
 from langgraph.types import Command
 
-from config.enums import LLMProvider
 from core.graph.research.state import ResearchState
-from core.graph.research.prompts import SEARCH_AGENT_PROMPT
+from core.graph.research.prompts import SEARCH_AGENT_PROMPT, current_date_context
 from core.llm.manager import LLMManager
-from core.llm.models import SupportedModel
 from core.tools.search import get_google_search
 from core.tools.news import get_news
+from shared.logger import logger
 
 search_tools = [get_google_search, get_news]
 _llm = LLMManager()
 _llm_with_tools = _llm.bind_tools(search_tools)
 
+# SEARCH_AGENT_PROMPT tells the model it may search, look at results, and
+# search again once more if the first pass was insufficient ("max 2
+# searches"). That means the model can legitimately return ANOTHER
+# tool_call instead of a text summary after the first tool round -- so
+# resolution has to loop, not stop after a single round-trip.
+MAX_TOOL_ROUNDS = 2
+
+
+def _extract_text(content) -> str:
+    if isinstance(content, list):
+        return "".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in content)
+    return str(content)
+
 
 async def search_agent(state: ResearchState) -> Command[Literal["supervisor"]]:
-    messages = [
-        {"role": "system", "content": SEARCH_AGENT_PROMPT},
-        {"role": "user", "content": state["question"]},
+    question = state["question"]
+    history = [
+        {"role": "system", "content": f"{SEARCH_AGENT_PROMPT}\n\n{current_date_context()}"},
+        {"role": "user", "content": question},
     ]
-    response = await _llm_with_tools.ainvoke(messages)
 
-    tool_outputs = []
-    for call in getattr(response, "tool_calls", []) or []:
-        tool_fn = next(t for t in search_tools if t.name == call["name"])
-        result = (
-            await tool_fn.ainvoke(call["args"])
-            if call["name"] == "get_news"
-            else tool_fn.invoke(call["args"])
-        )
-        tool_outputs.append(f"[{call['name']}] {result}")
+    try:
+        all_tool_outputs = []
+        response = None
 
-    if tool_outputs:
-        tool_messages = [
-            {"role": "tool", "tool_call_id": tc["id"], "content": str(out)}
-            for tc, out in zip(getattr(response, "tool_calls", []), tool_outputs)
-        ]
-        
-        # Build prompt history explicitly with BaseMessage / dict conversion
-        history = [
-            {"role": "system", "content": SEARCH_AGENT_PROMPT},
-            {"role": "user", "content": str(state["question"])},
-            response,
-        ] + tool_messages
+        for _ in range(MAX_TOOL_ROUNDS + 1):
+            response = await _llm_with_tools.ainvoke(history)
+            calls = getattr(response, "tool_calls", []) or []
+            if not calls:
+                break
 
-        followup = await _llm_with_tools.ainvoke(history)
-        summary = followup.content
-    else:
-        summary = response.content
+            history = history + [response]
+            for call in calls:
+                tool_fn = next(t for t in search_tools if t.name == call["name"])
+                result = (
+                    await tool_fn.ainvoke(call["args"])
+                    if call["name"] == "get_news"
+                    else tool_fn.invoke(call["args"])
+                )
+                all_tool_outputs.append(f"[{call['name']}] {result}")
+                history = history + [
+                    {"role": "tool", "tool_call_id": call["id"], "content": str(result)}
+                ]
 
-    if isinstance(summary, list):
-        summary = "".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in summary)
+        summary = _extract_text(response.content if response is not None else "").strip()
+
+        if not summary and all_tool_outputs:
+            # The model exhausted its tool-call budget without ever
+            # producing a text summary -- fall back to the raw findings
+            # rather than silently discarding real search results.
+            summary = "\n".join(all_tool_outputs)
+        elif not summary:
+            summary = f"No reliable search results found for: {question}"
+    except Exception:
+        # A hung/failed search-model call must not stall the whole graph --
+        # degrade to an explicit "no results" note the Writer is already
+        # instructed (per SEARCH_AGENT_PROMPT) to surface honestly.
+        logger.exception("Search agent failed for question: %s", question)
+        summary = f"No reliable search results found for: {question}"
 
     return Command(
         update={
-            "search_results": [str(summary)],
-            "messages": [HumanMessage(content=str(summary), name="search_agent")],
+            "search_results": [summary],
+            "messages": [HumanMessage(content=summary, name="search_agent")],
         },
         goto="supervisor",
     )

@@ -18,7 +18,6 @@ class ResearchGraphBuilder:
     def build(self):
         builder = StateGraph(ResearchState)
 
-        # 1. Add All Specialized Agents
         builder.add_node("supervisor", supervisor)
         builder.add_node("planner_agent", planner_agent)
         builder.add_node("dispatch_search", dispatch_search)
@@ -26,10 +25,12 @@ class ResearchGraphBuilder:
         builder.add_node("writer_agent", writer_agent)
         builder.add_node("reviewer_agent", reviewer_agent)
 
-        # 2. Add Routing Edges
         builder.add_edge(START, "supervisor")
-        # Explicit edges so LangGraph can validate the full graph topology
-        builder.add_edge("planner_agent", "dispatch_search")
+        # No static planner_agent -> dispatch_search edge: planner_agent now
+        # always returns its own Command(goto=...) (dispatch_search on
+        # approve/modify, supervisor on reject after the human-in-the-loop
+        # plan review). A static edge alongside a node-returned Command.goto
+        # would double-schedule the target node.
 
         if self._checkpointer:
             return builder.compile(checkpointer=self._checkpointer)

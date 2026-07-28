@@ -67,14 +67,31 @@ class Settings(BaseSettings):
         alias="LLM_TEMPERATURE",
     )
 
-    llm_max_tokens: int = Field(
-        default=32500,
-        alias="LLM_MAX_TOKENS",
+    # Tokens-per-minute limit for whatever provider/model LLM_MODEL is
+    # currently set to (check that provider's rate-limit dashboard --
+    # this varies per model, e.g. Gemini free-tier models are commonly
+    # ~250k TPM, a small Groq model can be as low as 6k TPM).
+    llm_tpm_limit: int = Field(
+        default=250_000,
+        alias="LLM_TPM_LIMIT",
+    )
+
+    # Worst-case number of LLM calls this app's research graph can fire
+    # within one minute (parallel search-agent branches + planner/writer/
+    # reviewer calls). Used to derive a safe per-request token budget.
+    llm_max_requests_per_minute: int = Field(
+        default=13,
+        alias="LLM_MAX_REQUESTS_PER_MINUTE",
     )
 
     llm_streaming: bool = Field(
         default=True,
         alias="LLM_STREAMING",
+    )
+
+    llm_request_timeout_seconds: int = Field(
+        default=60,
+        alias="LLM_REQUEST_TIMEOUT_SECONDS",
     )
 
     # =====================================================
@@ -255,6 +272,14 @@ class Settings(BaseSettings):
                 "LLM temperature must be between 0 and 2."
             )
         return value
+
+    @property
+    def llm_max_tokens(self) -> int:
+        """Per-request output token budget, derived from the provider's
+        TPM limit and the app's worst-case requests-per-minute, so that
+        even llm_max_requests_per_minute concurrent calls can't collectively
+        exceed llm_tpm_limit."""
+        return self.llm_tpm_limit // self.llm_max_requests_per_minute
 
 
 @lru_cache(maxsize=1)

@@ -1,20 +1,12 @@
-# ============================================================
-# services/chat_service.py — Chat Service
-# ============================================================
-# TODO: Coordinate between session, memory, agent, and LLM
-# TODO: Accept user message and session_id
-# TODO: Retrieve session + history, run agent, persist response
-# TODO: Return final assistant message to caller
-# ============================================================
-
 from collections.abc import AsyncGenerator
+from typing import Any
 
-from langchain.messages import AIMessage, HumanMessage
+from langchain.messages import HumanMessage
 from langchain_core.messages import BaseMessage
+from langgraph.types import Command
 
 from core.database.repositories.session_repository import SessionRepository
-from core.llm.formatter import LLMResponseFormatter
-from core.llm.manager import LLMManager, llm
+from core.llm.manager import LLMManager
 
 from core.memory.session import SessionManager
 from shared.logger import logger
@@ -39,55 +31,17 @@ class ChatService:
 
     async def chat(self, user_message: str) -> BaseMessage:
         """Process a user message and return the assistant response."""
-
-        # 1. Validate input
         if not user_message.strip():
             raise ValueError("Message cannot be empty.")
 
-        # 2. Get or create current session
         session = await self._session_manager.get_or_create()
-
         logger.debug("Using session %s", session.id)
 
-        # 3. Save user message
-        # self._history_manager.add_user_message(
-        #     session.id,
-        #     user_message,
-        # )
+        messages = [HumanMessage(content=user_message)]
 
-        # 4. Load conversation history
-        # messages = self._history_manager.get_messages(session.id)
-        messages = [
-            HumanMessage(content=user_message),
-        ]
-
-        # logger.debug(
-        #     "Executing LangGraph with %d messages.",
-        #     len(messages),
-        # )
-
-        # Debug (remove later)
-        # for message in messages:
-        #     print(type(message).__name__, ":", message.content)
-
-        # 5. Invoke LLM
-        logger.debug("Processing user message...")
-        # config = (
-        #     {
-        #         "configurable": {
-        #             "thread_id": str(session.id),
-        #         }
-        #     },
-        # )
         state = await self._graph.ainvoke(
-            {
-                "messages": messages,
-            },
-            config={
-                "configurable": {
-                    "thread_id": str(session.id),
-                }
-            },
+            {"messages": messages},
+            config={"configurable": {"thread_id": str(session.id)}},
         )
         for msg in state["messages"]:
             logger.debug(
@@ -95,22 +49,24 @@ class ChatService:
                 type(msg).__name__,
                 getattr(msg, "content", ""),
             )
-        response: AIMessage = state["messages"][-1]
-        # 6. Save assistant response
-        # self._history_manager.add_ai_message(
-        #     session.id,
-        #     response.content,
-        # )
+        return state["messages"][-1]
 
-        # self._history_manager.trim_history(
-        #     session.id,
-        #     max_messages=20,
-        # )
+    async def _resolve_config(self) -> dict:
+        session = await self._session_manager.get_or_create()
+        return {"configurable": {"thread_id": str(session.id)}}
 
-        logger.debug("Assistant response saved.")
-
-        # 7. Return response
-        return response
+    async def get_pending_interrupt(self) -> dict | None:
+        """Return the payload of an interrupt() the graph is currently
+        paused at for this session's thread (e.g. a research plan awaiting
+        approval), or None if the graph isn't paused."""
+        config = await self._resolve_config()
+        state = await self._graph.aget_state(config)
+        if not state:
+            return None
+        for task in state.tasks:
+            if task.interrupts:
+                return task.interrupts[0].value
+        return None
 
     async def stream_chat(
         self,
@@ -120,21 +76,30 @@ class ChatService:
         if not user_message.strip():
             raise ValueError("Message cannot be empty.")
 
-        session = await self._session_manager.get_or_create()
+        config = await self._resolve_config()
+        input_ = {"messages": [HumanMessage(content=user_message)]}
+        async for token in self._stream_graph(input_, config):
+            yield token
 
-        config = {
-            "configurable": {
-                "thread_id": str(session.id),
-            }
-        }
+    async def resume_chat(
+        self,
+        resume_value: Any,
+    ) -> AsyncGenerator[str, None]:
+        """Resume a graph run paused at an interrupt() -- e.g. after the
+        user approves/rejects/modifies a research plan -- and stream the
+        continuation the same way stream_chat does."""
+        config = await self._resolve_config()
+        async for token in self._stream_graph(Command(resume=resume_value), config):
+            yield token
 
+    async def _stream_graph(
+        self,
+        input_: Any,
+        config: dict,
+    ) -> AsyncGenerator[str, None]:
         has_streamed = False
         async for event in self._graph.astream_events(
-            {
-                "messages": [
-                    HumanMessage(content=user_message),
-                ]
-            },
+            input_,
             config=config,
             version="v2",
             subgraphs=True,  # Capture events from nested research_team subgraph
@@ -153,42 +118,41 @@ class ChatService:
                             has_streamed = True
                             yield block.get("text", "")
 
-        # Fallback: research subgraph completed but writer used ainvoke (no stream events)
-        if not has_streamed:
-            import asyncio
-            current_state = await self._graph.aget_state(config)
-            state_values = current_state.values if current_state else {}
-            final_ans = state_values.get("final_answer")
-            if final_ans:
-                if isinstance(final_ans, list):
-                    text = "".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in final_ans)
-                else:
-                    text = str(final_ans)
-                # Word-by-word fake streaming so output feels progressive
-                for word in text.split(" "):
-                    yield word + " "
-                    await asyncio.sleep(0.01)
-            elif state_values.get("messages"):
-                last_msg_content = getattr(state_values["messages"][-1], "content", "")
-                if isinstance(last_msg_content, list):
-                    text = "".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in last_msg_content)
-                else:
-                    text = str(last_msg_content)
-                for word in text.split(" "):
-                    yield word + " "
-                    await asyncio.sleep(0.01)
-        
-    # async def get_response(self, user_message: str) -> str:
-    #     """Return formatted assistant text."""
+        if has_streamed:
+            return
 
-    #     response = await self.chat(user_message)
-    #     return LLMResponseFormatter.to_text(response)
+        current_state = await self._graph.aget_state(config)
+
+        # The graph paused at an interrupt() (e.g. plan review) -- nothing
+        # to stream yet. The caller checks get_pending_interrupt() instead.
+        if current_state and any(t.interrupts for t in current_state.tasks):
+            return
+
+        # Fallback: research subgraph completed but writer used ainvoke (no stream events)
+        import asyncio
+        state_values = current_state.values if current_state else {}
+        final_ans = state_values.get("final_answer")
+        if final_ans:
+            if isinstance(final_ans, list):
+                text = "".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in final_ans)
+            else:
+                text = str(final_ans)
+            # Word-by-word fake streaming so output feels progressive
+            for word in text.split(" "):
+                yield word + " "
+                await asyncio.sleep(0.01)
+        elif state_values.get("messages"):
+            last_msg_content = getattr(state_values["messages"][-1], "content", "")
+            if isinstance(last_msg_content, list):
+                text = "".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in last_msg_content)
+            else:
+                text = str(last_msg_content)
+            for word in text.split(" "):
+                yield word + " "
+                await asyncio.sleep(0.01)
 
     async def get_response(self, message: str) -> str:
-
         parts = []
-
         async for token in self.stream_chat(message):
             parts.append(token)
-
         return "".join(parts)

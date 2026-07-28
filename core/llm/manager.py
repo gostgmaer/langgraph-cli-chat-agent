@@ -1,13 +1,3 @@
-# ============================================================
-# core/llm/manager.py — LLM Manager
-# ============================================================
-# TODO: Factory to return correct LLM based on provider setting
-# TODO: Support OpenAI, Anthropic, Google Gemini backends
-# TODO: Apply temperature, max_tokens from settings
-# TODO: Enable/disable streaming per request
-# TODO: Expose `get_llm(provider, model, **kwargs)` function
-# ============================================================
-
 from typing import Any
 from langchain.tools import BaseTool
 from langchain_core.language_models import LanguageModelInput
@@ -18,7 +8,6 @@ from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
 from langchain_groq import ChatGroq
-# from langchain_community.chat_models import ChatOllama
 from config.enums import LLMProvider
 from config.settings import settings
 from shared.logger import logger
@@ -47,6 +36,13 @@ class LLMManager:
             self._provider.value,
         )
 
+        # A hung network call (e.g. a slow/unresponsive tool-calling request
+        # to a local or cloud model) must not block the whole graph
+        # indefinitely -- each provider's LangChain integration names its
+        # request-timeout kwarg differently, so this is set per-branch
+        # rather than in common_kwargs.
+        timeout_seconds = settings.llm_request_timeout_seconds
+
         try:
 
             match self._provider:
@@ -54,29 +50,35 @@ class LLMManager:
                     return ChatGoogleGenerativeAI(
                         api_key=settings.google_api_key,
                         model=self._model_name,
+                        timeout=timeout_seconds,
                         **common_kwargs,
                     )
                 case LLMProvider.OPENAI:
                     return ChatOpenAI(
                         api_key=settings.openai_api_key,
                         model=self._model_name,
+                        request_timeout=timeout_seconds,
                         **common_kwargs,
                     )
                 case LLMProvider.ANTHROPIC:
                     return ChatAnthropic(
                         api_key=settings.anthropic_api_key,
                         model=self._model_name,
+                        default_request_timeout=timeout_seconds,
                         **common_kwargs,
                     )
                 case LLMProvider.GROQ:
                     return ChatGroq(
                         api_key=settings.groq_api_key,
                         model=self._model_name,
+                        request_timeout=timeout_seconds,
                         **common_kwargs,
                     )
                 case LLMProvider.OLLAMA:
                     return ChatOllama(
                         model=self._model_name,
+                        client_kwargs={"timeout": timeout_seconds},
+                        async_client_kwargs={"timeout": timeout_seconds},
                         **common_kwargs,
                     )
                 case _:

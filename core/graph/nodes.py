@@ -1,15 +1,3 @@
-# ============================================================
-# core/graph/nodes.py — LangGraph Node Functions
-# ============================================================
-# TODO: Define `chat_node` — call LLM with current state
-# TODO: Define `tool_node` — execute selected tool
-# TODO: Define `memory_node` — load/save memory & summaries
-# TODO: Define `rag_node` — retrieve relevant documents
-# TODO: Define `planner_node` — break task into sub-steps
-# TODO: Define `error_node` — handle and format errors
-# ============================================================
-
-
 from shared.logger import logger
 from langchain_core.messages import AIMessage
 from langchain_core.tools import BaseTool
@@ -31,8 +19,20 @@ def create_chatbot_node(
         
         from langchain_core.messages import SystemMessage
         sys_msg = SystemMessage(
-            content=f"You are a helpful AI assistant. Remember and use the following user preferences: {preferences}. "
-                    f"If the user shares a new preference (e.g. name, language, favorite color), use the save_preference tool."
+            content=(
+                "You are the assistant for this CLI app. Your actual capabilities are "
+                "exactly these tools, nothing more -- if asked what you can do, describe "
+                "these truthfully rather than inventing other skills or personas:\n"
+                "- get_weather: current weather for a city\n"
+                "- get_google_search: general web search\n"
+                "- get_news: recent news on a topic\n"
+                "- save_preference: remember a user preference (name, language, etc.)\n"
+                "There is also a separate '/research <topic>' command (handled outside "
+                "this chat turn) for deep, multi-step research with a search team -- "
+                "mention it as an option for in-depth research questions.\n\n"
+                f"Remembered user preferences: {preferences}. If the user shares a new "
+                "preference, use the save_preference tool."
+            )
         )
         
         formatted_messages = []
@@ -55,7 +55,6 @@ def create_chatbot_node(
             "messages": [response]
         }
         
-        # Intercept preference saving
         if hasattr(response, "tool_calls"):
             for tc in response.tool_calls:
                 if tc["name"] == "save_preference":

@@ -22,7 +22,6 @@ class CLIRenderer:
 
     def print_banner(self) -> None:
         self.console.print()
-        # Proper, clean heading without heavy boxes
         self.console.print(f"[bold cyan]{settings.app_name}[/bold cyan]", justify="center")
         self.console.print(
             f"[dim]Version {settings.app_version} • {settings.llm_provider.value.upper()} • {settings.llm_model}[/dim]",
@@ -59,8 +58,7 @@ class CLIRenderer:
     def start_assistant_message(self):
         self.console.print("\n[bold blue]🤖 Assistant:[/bold blue]")
         self._stream_buffer = ""
-        
-        # Stream markdown directly without wrapping it in a Panel
+
         self._live = Live(
             Markdown(self._stream_buffer),
             console=self.console,
@@ -113,6 +111,18 @@ class CLIRenderer:
         session_id: str,
     ):
         self.console.print(f"[dim cyan]Session ID: {session_id}[/dim cyan]")
+
+    # ------------------------------------------------------------------
+    # Research Plan Review (Human-in-the-Loop)
+    # ------------------------------------------------------------------
+
+    def print_plan(
+        self,
+        sub_questions: list[str],
+    ) -> None:
+        self.console.print("\n[bold magenta]📋 Research Plan:[/bold magenta]")
+        for i, q in enumerate(sub_questions, start=1):
+            self.console.print(f"  [cyan]{i}.[/cyan] {q}")
 
     # ------------------------------------------------------------------
     # System
