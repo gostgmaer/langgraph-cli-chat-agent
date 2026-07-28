@@ -14,9 +14,11 @@ from langchain_core.language_models import LanguageModelInput
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
 from langchain_groq import ChatGroq
+# from langchain_community.chat_models import ChatOllama
 from config.enums import LLMProvider
 from config.settings import settings
 from shared.logger import logger
@@ -69,6 +71,11 @@ class LLMManager:
                 case LLMProvider.GROQ:
                     return ChatGroq(
                         api_key=settings.groq_api_key,
+                        model=self._model_name,
+                        **common_kwargs,
+                    )
+                case LLMProvider.OLLAMA:
+                    return ChatOllama(
                         model=self._model_name,
                         **common_kwargs,
                     )

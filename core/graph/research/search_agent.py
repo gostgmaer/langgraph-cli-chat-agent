@@ -11,9 +11,7 @@ from core.tools.search import get_google_search
 from core.tools.news import get_news
 
 search_tools = [get_google_search, get_news]
-_llm = LLMManager(
-    provider=LLMProvider.GOOGLE, model_name=SupportedModel.GEMINI_3_1_FLASH_LITE
-)
+_llm = LLMManager()
 _llm_with_tools = _llm.bind_tools(search_tools)
 
 

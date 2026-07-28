@@ -53,9 +53,24 @@ class CLI:
                     continue
 
                 # Execute all messages through the master graph
-                self._renderer.start_assistant_message()
-                async for token in self._chat_service.stream_chat(user_message):
-                    self._renderer.stream_token(token)
+                is_research = user_message.strip().startswith("/research")
+                status_text = "Researching... (This may take a minute)" if is_research else "Thinking..."
+                
+                first_token = True
+                status = self._renderer.status(status_text)
+                status.start()
+                
+                try:
+                    async for token in self._chat_service.stream_chat(user_message):
+                        if first_token:
+                            status.stop()
+                            self._renderer.start_assistant_message()
+                            first_token = False
+                        self._renderer.stream_token(token)
+                finally:
+                    if first_token:
+                        status.stop()
+                        self._renderer.start_assistant_message()
 
                 self._renderer.finish_assistant_message()
                 self._renderer.separator()

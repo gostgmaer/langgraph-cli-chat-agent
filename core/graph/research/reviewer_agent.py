@@ -9,9 +9,7 @@ from core.llm.models import SupportedModel
 MAX_REVISIONS = 2
 
 
-_llm = LLMManager(
-    provider=LLMProvider.GOOGLE, model_name=SupportedModel.GEMINI_3_1_FLASH_LITE
-)
+_llm = LLMManager()
 
 
 def reviewer_agent(

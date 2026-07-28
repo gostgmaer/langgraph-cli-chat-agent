@@ -24,6 +24,7 @@ class LLMProvider(StrEnum):
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
     GROQ = "groq"
+    OLLAMA = "ollama"
 
 
 class EmbeddingProvider(StrEnum):

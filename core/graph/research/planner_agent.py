@@ -14,9 +14,7 @@ class SubQuestions(BaseModel):
     )
 
 
-_llm = LLMManager(
-    provider=LLMProvider.GOOGLE, model_name=SupportedModel.GEMINI_3_1_FLASH_LITE
-)
+_llm = LLMManager()
 _planner_llm = _llm.model.with_structured_output(SubQuestions)
 
 

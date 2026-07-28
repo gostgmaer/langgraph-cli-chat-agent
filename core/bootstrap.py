@@ -17,9 +17,7 @@ async def create_chat_service(
     session_repository = SessionRepository(db_session)
     session_manager = SessionManager(session_repository)
 
-    primary_llm = LLMManager(
-        provider=LLMProvider.GOOGLE, model_name=SupportedModel.GEMINI_3_1_FLASH_LITE
-    )
+    primary_llm = LLMManager()
 
     return ChatService(
         llm=primary_llm,

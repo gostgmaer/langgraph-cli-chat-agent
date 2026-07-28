@@ -9,9 +9,7 @@ from core.graph.research.prompts import WRITER_AGENT_PROMPT
 from core.llm.manager import LLMManager
 from core.llm.models import SupportedModel
 
-_llm = LLMManager(
-    provider=LLMProvider.GOOGLE, model_name=SupportedModel.GEMINI_3_1_FLASH_LITE
-)
+_llm = LLMManager()
 
 
 async def writer_agent(state: ResearchState) -> Command[Literal["supervisor"]]:

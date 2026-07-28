@@ -140,6 +140,9 @@ class ChatService:
             subgraphs=True,  # Capture events from nested research_team subgraph
         ):
             if event["event"] == "on_chat_model_stream":
+                node_name = event.get("metadata", {}).get("langgraph_node", "")
+                if node_name not in ["chatbot", "writer_agent"]:
+                    continue
                 chunk = event["data"]["chunk"]
                 if isinstance(chunk.content, str) and chunk.content:
                     has_streamed = True
