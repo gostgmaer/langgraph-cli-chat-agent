@@ -10,7 +10,7 @@ from core.llm.models import SupportedModel
 
 class SubQuestions(BaseModel):
     sub_questions: list[str] = Field(
-        description="2-4 focused, independently-searchable sub-questions that together cover the main question."
+        description="7-10 focused, independently-searchable sub-questions that together cover the main question."
     )
 
 
@@ -28,7 +28,7 @@ def planner_agent(state: ResearchState) -> Command[Literal["dispatch_search"]]:
 
     try:
         result = _planner_llm.invoke(
-            f"Break this research topic into 2-3 focused sub-questions for parallel web search:\n\n{q}"
+            f"Break this research topic into 7-10 focused sub-questions for parallel web search:\n\n{q}"
         )
         questions = result.sub_questions if result and hasattr(result, "sub_questions") else [q]
     except Exception:

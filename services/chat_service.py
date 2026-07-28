@@ -137,6 +137,7 @@ class ChatService:
             },
             config=config,
             version="v2",
+            subgraphs=True,  # Capture events from nested research_team subgraph
         ):
             if event["event"] == "on_chat_model_stream":
                 chunk = event["data"]["chunk"]
@@ -149,22 +150,30 @@ class ChatService:
                             has_streamed = True
                             yield block.get("text", "")
 
-        # Subgraph / Multi-Agent response fallback if tokens were not streamed directly
+        # Fallback: research subgraph completed but writer used ainvoke (no stream events)
         if not has_streamed:
+            import asyncio
             current_state = await self._graph.aget_state(config)
             state_values = current_state.values if current_state else {}
             final_ans = state_values.get("final_answer")
             if final_ans:
                 if isinstance(final_ans, list):
-                    yield "".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in final_ans)
+                    text = "".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in final_ans)
                 else:
-                    yield str(final_ans)
+                    text = str(final_ans)
+                # Word-by-word fake streaming so output feels progressive
+                for word in text.split(" "):
+                    yield word + " "
+                    await asyncio.sleep(0.01)
             elif state_values.get("messages"):
                 last_msg_content = getattr(state_values["messages"][-1], "content", "")
                 if isinstance(last_msg_content, list):
-                    yield "".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in last_msg_content)
+                    text = "".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in last_msg_content)
                 else:
-                    yield str(last_msg_content)
+                    text = str(last_msg_content)
+                for word in text.split(" "):
+                    yield word + " "
+                    await asyncio.sleep(0.01)
         
     # async def get_response(self, user_message: str) -> str:
     #     """Return formatted assistant text."""

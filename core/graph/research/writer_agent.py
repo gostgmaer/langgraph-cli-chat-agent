@@ -23,18 +23,25 @@ async def writer_agent(state: ResearchState) -> Command[Literal["supervisor"]]:
     if isinstance(question, list):
         question = "".join(str(q) for q in question)
 
-    response = await _llm.ainvoke(
-        f"{WRITER_AGENT_PROMPT}\n\nQuestion: {question}\n\nFindings:\n{findings}"
-    )
-    
-    draft = response.content
-    if isinstance(draft, list):
-        draft = "".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in draft)
+    prompt = f"{WRITER_AGENT_PROMPT}\n\nQuestion: {question}\n\nFindings:\n{findings}"
+
+    # Use astream so on_chat_model_stream events flow through subgraphs=True
+    draft_parts = []
+    async for chunk in _llm.model.astream(prompt):
+        content = chunk.content
+        if isinstance(content, str):
+            draft_parts.append(content)
+        elif isinstance(content, list):
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "text":
+                    draft_parts.append(block.get("text", ""))
+
+    draft = "".join(draft_parts)
 
     return Command(
         update={
-            "draft": str(draft),
-            "messages": [HumanMessage(content=str(draft), name="writer_agent")],
+            "draft": draft,
+            "messages": [HumanMessage(content=draft, name="writer_agent")],
         },
         goto="supervisor",
     )
