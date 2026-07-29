@@ -3,6 +3,7 @@ from rich.markdown import Markdown
 from rich.rule import Rule
 from rich.status import Status
 from rich.live import Live
+from rich.table import Table
 from rich import print
 
 from config.settings import settings
@@ -123,6 +124,69 @@ class CLIRenderer:
         self.console.print("\n[bold magenta]📋 Research Plan:[/bold magenta]")
         for i, q in enumerate(sub_questions, start=1):
             self.console.print(f"  [cyan]{i}.[/cyan] {q}")
+
+    # ------------------------------------------------------------------
+    # Slash Commands
+    # ------------------------------------------------------------------
+
+    def print_command_menu(
+        self,
+        commands: list[tuple[str, str, str]],
+    ) -> None:
+        """Render the available slash commands as a numbered table.
+
+        `commands` is a list of (name, usage, description) tuples.
+        """
+        table = Table(title="Available Commands", show_lines=False)
+        table.add_column("#", style="dim", justify="right")
+        table.add_column("Command", style="bold cyan")
+        table.add_column("Description")
+
+        for i, (_, usage, description) in enumerate(commands, start=1):
+            table.add_row(str(i), usage, description)
+
+        self.console.print(table)
+
+    def print_history(
+        self,
+        messages: list,
+    ) -> None:
+        """Render the conversation history for the current session."""
+        if not messages:
+            self.print_system_message("No conversation history yet for this session.")
+            return
+
+        self.console.print("\n[bold magenta]📜 Conversation History:[/bold magenta]")
+        for msg in messages:
+            role = type(msg).__name__
+            text = self._stringify_content(getattr(msg, "content", ""))
+            if not text.strip():
+                continue
+
+            if role == "HumanMessage":
+                self.console.print("\n[bold green]👤 You:[/bold green]")
+                self.console.print(text)
+            elif role == "AIMessage":
+                self.console.print("\n[bold blue]🤖 Assistant:[/bold blue]")
+                self.console.print(Markdown(text))
+            elif role == "SystemMessage":
+                continue
+            else:
+                self.console.print(f"\n[dim]{role}:[/dim] {text}")
+
+    @staticmethod
+    def _stringify_content(content) -> str:
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            parts = []
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "text":
+                    parts.append(block.get("text", ""))
+                elif isinstance(block, str):
+                    parts.append(block)
+            return "".join(parts)
+        return str(content) if content else ""
 
     # ------------------------------------------------------------------
     # System

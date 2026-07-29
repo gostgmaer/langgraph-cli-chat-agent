@@ -78,8 +78,9 @@ class GraphBuilder:
         self._checkpointer = checkpointer
 
     def build(self):
-        # 1. Subgraph: Research Team
-        research_team_subgraph = ResearchGraphBuilder().build()
+        # 1. Subgraph: Research Team (reuses the same LLMManager instance --
+        # no separate provider connection for the research agents)
+        research_team_subgraph = ResearchGraphBuilder(llm=self._llm).build()
 
         # 2. Parent Graph
         builder = StateGraph(State)

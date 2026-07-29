@@ -1,6 +1,14 @@
 from interfaces.cli.renderer import CLIRenderer
 from services.chat_service import ChatService
 
+# (name, usage, description) shown by '/' and '/list'
+COMMANDS = [
+    ("history", "/history", "Show the conversation history for this session"),
+    ("list", "/list", "Show this list of available commands"),
+    ("research", "/research <topic>", "Run multi-agent research on a topic"),
+    ("clear", "/clear", "Clear the screen and start a new session"),
+]
+
 
 class CLI:
     def __init__(
@@ -16,7 +24,7 @@ class CLI:
         """Start the CLI application."""
         self._renderer.print_banner()
         self._renderer.print_system_message(
-            "Tip: Type messages for Chat, '/research <topic>' for Multi-Agent Research, or '/graph' to render graph.png"
+            "Tip: Type '/' to see available commands, or just type a message to chat."
         )
         while True:
             try:
@@ -28,19 +36,33 @@ class CLI:
                     self._renderer.print_system_message("Goodbye!")
                     break
 
-                if user_message.lower() == "/graph":
-                    try:
-                        png_bytes = self._chat_service._graph.get_graph(
-                            xray=True
-                        ).draw_mermaid_png()
-                        with open("graph.png", "wb") as f:
-                            f.write(png_bytes)
-                        self._renderer.print_system_message(
-                            "✅ Saved Master Graph diagram to 'graph.png'"
-                        )
-                    except Exception as e:
-                        self._renderer.print_error(f"Could not render graph PNG: {e}")
+                if user_message.strip() == "/":
+                    user_message = await self._prompt_menu_choice()
+                    if user_message is None:
+                        continue
+
+                cmd = user_message.strip().lower()
+
+                if cmd == "/list":
+                    self._renderer.print_command_menu(COMMANDS)
                     continue
+
+                if cmd == "/history":
+                    await self._show_history()
+                    continue
+
+                if cmd == "/clear":
+                    await self._clear_session()
+                    continue
+
+                if cmd == "/research":
+                    topic = await self._prompt_topic()
+                    if not topic:
+                        self._renderer.print_system_message(
+                            "Research cancelled — no topic given."
+                        )
+                        continue
+                    user_message = f"/research {topic}"
 
                 is_research = user_message.strip().startswith("/research")
                 status_text = (
@@ -69,9 +91,6 @@ class CLI:
 
                 # Human-in-the-loop: the research planner pauses for plan
                 # approval before dispatching parallel searches. Keep
-                # resuming (which may itself pause again, e.g. after a
-                # rejection produces a final answer with no further pause)
-                # until the graph is no longer paused.
                 pending = await self._chat_service.get_pending_interrupt()
                 while pending:
                     resume_value = await self._review_plan(pending)
@@ -142,3 +161,65 @@ class CLI:
                 return {"action": "approve"}
 
             self._renderer.print_system_message("Please answer y, n, or m.")
+
+    async def _prompt_menu_choice(self) -> str | None:
+        """Show the slash-command menu and let the user pick an entry by
+        number or name. Returns the fully-formed command string to execute
+        (e.g. '/history', '/research <topic>'), or None if cancelled."""
+        self._renderer.print_command_menu(COMMANDS)
+        self.console.print(
+            "\n[bold yellow]Select a command[/bold yellow] "
+            "[dim](number or name, blank to cancel):[/dim] ",
+            end="",
+        )
+        choice = str(input().strip().lower())
+        if not choice:
+            return None
+
+        name = None
+        if choice.isdigit():
+            index = int(choice) - 1
+            if 0 <= index < len(COMMANDS):
+                name = COMMANDS[index][0]
+        else:
+            candidate = choice.lstrip("/")
+            if candidate in (c[0] for c in COMMANDS):
+                name = candidate
+
+        if name is None:
+            self._renderer.print_system_message(f"Unknown command: {choice}")
+            return None
+
+        if name == "research":
+            topic = await self._prompt_topic()
+            if not topic:
+                self._renderer.print_system_message(
+                    "Research cancelled — no topic given."
+                )
+                return None
+            return f"/research {topic}"
+
+        return f"/{name}"
+
+    async def _prompt_topic(self) -> str:
+        """Ask the user for a research topic."""
+        self.console.print(
+            "[bold yellow]Research topic:[/bold yellow] ", end=""
+        )
+        return str(input().strip())
+
+    async def _show_history(self) -> None:
+        """Display the message history for the current session."""
+        messages = await self._chat_service.get_history()
+        self._renderer.print_history(messages)
+
+    async def _clear_session(self) -> None:
+        """Clear the screen and start a brand-new session."""
+        self._renderer.clear()
+        session = await self._chat_service.new_session()
+        self._renderer.print_banner()
+        self._renderer.print_session(session.id)
+        self._renderer.print_system_message(
+            "Started a new session. Previous conversation context has been cleared."
+        )
+

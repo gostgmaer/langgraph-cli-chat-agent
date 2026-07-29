@@ -8,7 +8,7 @@ from langgraph.types import Command
 from core.database.repositories.session_repository import SessionRepository
 from core.llm.manager import LLMManager
 
-from core.memory.session import SessionManager
+from core.memory.session import Session, SessionManager
 from shared.logger import logger
 from core.graph.graph import GraphBuilder
 
@@ -24,6 +24,7 @@ class ChatService:
         checkpoint_manager,
     ) -> None:
 
+        self._llm = llm
         self._session_manager = session_manager
         self._checkpoint_manager = checkpoint_manager
         self._checkpointer = checkpointer
@@ -54,6 +55,19 @@ class ChatService:
     async def _resolve_config(self) -> dict:
         session = await self._session_manager.get_or_create()
         return {"configurable": {"thread_id": str(session.id)}}
+
+    async def get_history(self) -> list[BaseMessage]:
+        """Return the message history for the current session's thread."""
+        config = await self._resolve_config()
+        state = await self._graph.aget_state(config)
+        if not state:
+            return []
+        return state.values.get("messages", [])
+
+    async def new_session(self) -> Session:
+        """Start a fresh session, giving the graph a new thread_id so the
+        assistant no longer sees prior conversation turns."""
+        return await self._session_manager.create_session()
 
     async def get_pending_interrupt(self) -> dict | None:
         """Return the payload of an interrupt() the graph is currently

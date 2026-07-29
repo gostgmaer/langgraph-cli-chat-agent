@@ -10,8 +10,6 @@ from core.tools.news import get_news
 from shared.logger import logger
 
 search_tools = [get_google_search, get_news]
-_llm = LLMManager()
-_llm_with_tools = _llm.bind_tools(search_tools)
 MAX_TOOL_ROUNDS = 2
 
 
@@ -21,50 +19,55 @@ def _extract_text(content) -> str:
     return str(content)
 
 
-async def search_agent(state: ResearchState) -> Command[Literal["supervisor"]]:
-    question = state["question"]
-    history = [
-        {"role": "system", "content": f"{SEARCH_AGENT_PROMPT}\n\n{current_date_context()}"},
-        {"role": "user", "content": question},
-    ]
+def create_search_agent(llm: LLMManager):
+    llm_with_tools = llm.bind_tools(search_tools)
 
-    try:
-        all_tool_outputs = []
-        response = None
+    async def search_agent(state: ResearchState) -> Command[Literal["supervisor"]]:
+        question = state["question"]
+        history = [
+            {"role": "system", "content": f"{SEARCH_AGENT_PROMPT}\n\n{current_date_context()}"},
+            {"role": "user", "content": question},
+        ]
 
-        for _ in range(MAX_TOOL_ROUNDS + 1):
-            response = await _llm_with_tools.ainvoke(history)
-            calls = getattr(response, "tool_calls", []) or []
-            if not calls:
-                break
+        try:
+            all_tool_outputs = []
+            response = None
 
-            history = history + [response]
-            for call in calls:
-                tool_fn = next(t for t in search_tools if t.name == call["name"])
-                result = (
-                    await tool_fn.ainvoke(call["args"])
-                    if call["name"] == "get_news"
-                    else tool_fn.invoke(call["args"])
-                )
-                all_tool_outputs.append(f"[{call['name']}] {result}")
-                history = history + [
-                    {"role": "tool", "tool_call_id": call["id"], "content": str(result)}
-                ]
+            for _ in range(MAX_TOOL_ROUNDS + 1):
+                response = await llm_with_tools.ainvoke(history)
+                calls = getattr(response, "tool_calls", []) or []
+                if not calls:
+                    break
 
-        summary = _extract_text(response.content if response is not None else "").strip()
+                history = history + [response]
+                for call in calls:
+                    tool_fn = next(t for t in search_tools if t.name == call["name"])
+                    result = (
+                        await tool_fn.ainvoke(call["args"])
+                        if call["name"] == "get_news"
+                        else tool_fn.invoke(call["args"])
+                    )
+                    all_tool_outputs.append(f"[{call['name']}] {result}")
+                    history = history + [
+                        {"role": "tool", "tool_call_id": call["id"], "content": str(result)}
+                    ]
 
-        if not summary and all_tool_outputs:
-            summary = "\n".join(all_tool_outputs)
-        elif not summary:
+            summary = _extract_text(response.content if response is not None else "").strip()
+
+            if not summary and all_tool_outputs:
+                summary = "\n".join(all_tool_outputs)
+            elif not summary:
+                summary = f"No reliable search results found for: {question}"
+        except Exception:
+            logger.exception("Search agent failed for question: %s", question)
             summary = f"No reliable search results found for: {question}"
-    except Exception:
-        logger.exception("Search agent failed for question: %s", question)
-        summary = f"No reliable search results found for: {question}"
 
-    return Command(
-        update={
-            "search_results": [summary],
-            "messages": [HumanMessage(content=summary, name="search_agent")],
-        },
-        goto="supervisor",
-    )
+        return Command(
+            update={
+                "search_results": [summary],
+                "messages": [HumanMessage(content=summary, name="search_agent")],
+            },
+            goto="supervisor",
+        )
+
+    return search_agent

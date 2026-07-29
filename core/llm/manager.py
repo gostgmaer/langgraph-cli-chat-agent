@@ -125,6 +125,3 @@ class LLMManager:
             "provider": self._provider.value,
             "model": self._model_name,
         }
-
-
-llm = LLMManager()
