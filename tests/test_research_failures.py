@@ -1,8 +1,13 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from langchain_core.messages import AIMessage
-from core.graph.research.search_agent import search_agent
-from core.graph.research.writer_agent import writer_agent
+from core.llm.manager import LLMManager
+from core.graph.research.search_agent import create_search_agent
+from core.graph.research.writer_agent import create_writer_agent
+
+_llm = LLMManager()
+search_agent = create_search_agent(_llm)
+writer_agent = create_writer_agent(_llm)
 
 
 @pytest.mark.asyncio
