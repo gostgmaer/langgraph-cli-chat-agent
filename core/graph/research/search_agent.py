@@ -12,12 +12,6 @@ from shared.logger import logger
 search_tools = [get_google_search, get_news]
 _llm = LLMManager()
 _llm_with_tools = _llm.bind_tools(search_tools)
-
-# SEARCH_AGENT_PROMPT tells the model it may search, look at results, and
-# search again once more if the first pass was insufficient ("max 2
-# searches"). That means the model can legitimately return ANOTHER
-# tool_call instead of a text summary after the first tool round -- so
-# resolution has to loop, not stop after a single round-trip.
 MAX_TOOL_ROUNDS = 2
 
 
@@ -60,16 +54,10 @@ async def search_agent(state: ResearchState) -> Command[Literal["supervisor"]]:
         summary = _extract_text(response.content if response is not None else "").strip()
 
         if not summary and all_tool_outputs:
-            # The model exhausted its tool-call budget without ever
-            # producing a text summary -- fall back to the raw findings
-            # rather than silently discarding real search results.
             summary = "\n".join(all_tool_outputs)
         elif not summary:
             summary = f"No reliable search results found for: {question}"
     except Exception:
-        # A hung/failed search-model call must not stall the whole graph --
-        # degrade to an explicit "no results" note the Writer is already
-        # instructed (per SEARCH_AGENT_PROMPT) to surface honestly.
         logger.exception("Search agent failed for question: %s", question)
         summary = f"No reliable search results found for: {question}"
 

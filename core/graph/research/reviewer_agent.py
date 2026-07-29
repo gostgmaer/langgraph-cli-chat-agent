@@ -32,9 +32,6 @@ def reviewer_agent(
             f"Reply ONLY with a JSON object: {{\"is_consistent\": true/false, \"issues\": [\"list of issues if any\"]}}.\n"
             f"Set is_consistent=true if draft is fully supported. Set false and list issues if not."
         )
-        # Some models/providers (e.g. certain Gemini variants) return
-        # content as a list of content blocks rather than a plain string --
-        # extract the text instead of stringifying the whole block list.
         if isinstance(raw.content, list):
             raw_text = "".join(
                 b.get("text", "") if isinstance(b, dict) else str(b) for b in raw.content

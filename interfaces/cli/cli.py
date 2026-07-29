@@ -30,9 +30,9 @@ class CLI:
 
                 if user_message.lower() == "/graph":
                     try:
-                        png_bytes = (
-                            self._chat_service._graph.get_graph(xray=True).draw_mermaid_png()
-                        )
+                        png_bytes = self._chat_service._graph.get_graph(
+                            xray=True
+                        ).draw_mermaid_png()
                         with open("graph.png", "wb") as f:
                             f.write(png_bytes)
                         self._renderer.print_system_message(
@@ -43,12 +43,16 @@ class CLI:
                     continue
 
                 is_research = user_message.strip().startswith("/research")
-                status_text = "Researching... (This may take a minute)" if is_research else "Thinking..."
-                
+                status_text = (
+                    "Researching... (This may take a minute)"
+                    if is_research
+                    else "Thinking..."
+                )
+
                 first_token = True
                 status = self._renderer.status(status_text)
                 status.start()
-                
+
                 try:
                     async for token in self._chat_service.stream_chat(user_message):
                         if first_token:
@@ -72,7 +76,9 @@ class CLI:
                 while pending:
                     resume_value = await self._review_plan(pending)
 
-                    status = self._renderer.status("Researching... (This may take a minute)")
+                    status = self._renderer.status(
+                        "Researching... (This may take a minute)"
+                    )
                     status.start()
                     first_token = True
                     try:

@@ -403,12 +403,6 @@ Return ONLY valid JSON.
 
 
 def PLLANER_PROMPT(q: str) -> str:
-    # Plain string substitution (not an f-string / .format()) on purpose:
-    # the JSON schema above contains many literal { } braces, and both
-    # f-strings and .format() try to parse those as format specifiers --
-    # that's caused two separate crashes already as this prompt was edited.
-    # .replace() on unique tokens is immune to that regardless of how the
-    # JSON example changes in the future.
     return _PLANNER_PROMPT_TEMPLATE.replace(
         "__DATE_CONTEXT__", current_date_context()
     ).replace("__TOPIC__", str(q))

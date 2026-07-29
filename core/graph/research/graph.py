@@ -26,11 +26,6 @@ class ResearchGraphBuilder:
         builder.add_node("reviewer_agent", reviewer_agent)
 
         builder.add_edge(START, "supervisor")
-        # No static planner_agent -> dispatch_search edge: planner_agent now
-        # always returns its own Command(goto=...) (dispatch_search on
-        # approve/modify, supervisor on reject after the human-in-the-loop
-        # plan review). A static edge alongside a node-returned Command.goto
-        # would double-schedule the target node.
 
         if self._checkpointer:
             return builder.compile(checkpointer=self._checkpointer)

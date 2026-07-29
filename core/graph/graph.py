@@ -4,7 +4,6 @@ from langgraph.graph.message import add_messages
 from langchain_core.messages import AnyMessage, HumanMessage
 from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.checkpoint.base import BaseCheckpointSaver
-import operator
 
 from core.graph.nodes import create_chatbot_node
 from core.graph.research.graph import ResearchGraphBuilder

@@ -23,14 +23,7 @@ def planner_agent(
 
     questions = [q]
     try:
-        # A manual JSON-instruction + regex-parse, rather than
-        # with_structured_output(), matches what reviewer_agent already
-        # does -- structured-output tool schemas aren't reliably honored
-        # by every provider/model (e.g. local/cloud Ollama models).
         raw = _llm.model.invoke(PLLANER_PROMPT(q))
-        # Some models/providers (e.g. certain Gemini variants) return
-        # content as a list of content blocks rather than a plain string --
-        # extract the text instead of stringifying the whole block list.
         if isinstance(raw.content, list):
             raw_text = "".join(
                 b.get("text", "") if isinstance(b, dict) else str(b)
@@ -41,9 +34,6 @@ def planner_agent(
         match = re.search(r"\{.*\}", raw_text, re.DOTALL)
         if match:
             parsed = json.loads(match.group())
-            # PLLANER_PROMPT's schema is {"research_plan": [{"query": "...", ...}]};
-            # fall back to a flat {"sub_questions": [...]} for robustness against
-            # future prompt tweaks.
             research_plan = parsed.get("research_plan")
             if isinstance(research_plan, list) and research_plan:
                 parsed_questions = [
