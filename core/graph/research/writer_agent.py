@@ -43,8 +43,6 @@ def create_writer_agent(llm: LLMManager):
                 "Here is the raw research summary instead:\n\n" + str(findings)
             )
 
-        # Not appended to `messages` here -- the draft may still be revised
-        # by reviewer_agent. supervisor appends the one clean final answer
         # to `messages` once the whole research run actually completes.
         return Command(
             update={"draft": draft},

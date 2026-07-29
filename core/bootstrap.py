@@ -48,8 +48,6 @@ def render_startup_diagrams(chat_service: ChatService) -> list[tuple[str, Except
         results.append(("graph.png", e))
 
     try:
-        # Reuse the ChatService's already-connected LLMManager -- building a
-        # fresh one here would open a second, redundant provider connection.
         research_graph = ResearchGraphBuilder(llm=chat_service._llm).build()
         png_bytes = research_graph.get_graph(xray=True).draw_mermaid_png()
         with open("research_graph.png", "wb") as f:

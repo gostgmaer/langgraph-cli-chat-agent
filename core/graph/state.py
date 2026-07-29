@@ -9,7 +9,6 @@
 # ============================================================
 
 
-
 from typing import Annotated, TypedDict, Any
 import operator
 
@@ -29,10 +28,13 @@ def update_preferences(left: dict[str, Any], right: dict[str, Any]) -> dict[str,
 
 class AgentState(TypedDict):
     """Shared state flowing through the graph."""
+
     messages: Annotated[list[BaseMessage], add_messages]
 
+
 class GraphState(MessagesState):
-   """Shared state for the LangGraph workflow."""
-   route: str | None
-   action: str | None
-   user_preferences: Annotated[dict[str, Any], update_preferences]
+    """Shared state for the LangGraph workflow."""
+
+    route: str | None
+    action: str | None
+    user_preferences: Annotated[dict[str, Any], update_preferences]

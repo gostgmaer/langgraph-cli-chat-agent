@@ -15,7 +15,9 @@ from collections.abc import Iterator, AsyncIterator
 
 
 class LLMManager:
-    def __init__(self, provider: LLMProvider | None = None, model_name: str | None = None):
+    def __init__(
+        self, provider: LLMProvider | None = None, model_name: str | None = None
+    ):
         self._provider = provider or settings.llm_provider
         self._model_name = model_name or settings.llm_model
 
@@ -35,12 +37,7 @@ class LLMManager:
             "Initializing %s provider...",
             self._provider.value,
         )
-
-        # A hung network call (e.g. a slow/unresponsive tool-calling request
-        # to a local or cloud model) must not block the whole graph
-        # indefinitely -- each provider's LangChain integration names its
         # request-timeout kwarg differently, so this is set per-branch
-        # rather than in common_kwargs.
         timeout_seconds = settings.llm_request_timeout_seconds
 
         try:

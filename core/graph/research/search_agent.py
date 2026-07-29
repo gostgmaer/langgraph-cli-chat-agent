@@ -9,9 +9,6 @@ from core.tools.news import get_news
 from shared.logger import logger
 
 search_tools = [get_google_search, get_news]
-# 1 extra round (not 2) -- each round resends the full ~600-token
-# SEARCH_AGENT_PROMPT, multiplied across every parallel sub-question, so
-# this is the single biggest lever on /research input-token cost. Still
 # allows one refinement search if the first attempt comes back empty.
 MAX_TOOL_ROUNDS = 1
 
@@ -65,11 +62,6 @@ def create_search_agent(llm: LLMManager):
             logger.exception("Search agent failed for question: %s", question)
             summary = f"No reliable search results found for: {question}"
 
-        # Intentionally not appended to `messages` -- this is scratch
-        # research data (one entry per parallel sub-question), not something
-        # that should be replayed as context on every later chat turn in
-        # this thread. `search_results` is what reviewer_agent/writer_agent
-        # actually read; supervisor appends the one clean final answer to
         # `messages` once the whole research run completes.
         return Command(
             update={"search_results": [summary]},

@@ -16,8 +16,9 @@ def create_chatbot_node(
     ):
         messages = state["messages"]
         preferences = state.get("user_preferences", {})
-        
+
         from langchain_core.messages import SystemMessage
+
         sys_msg = SystemMessage(
             content=(
                 "You are the assistant for this CLI app. Your actual capabilities are "
@@ -34,36 +35,36 @@ def create_chatbot_node(
                 "preference, use the save_preference tool."
             )
         )
-        
+
         formatted_messages = []
         for m in messages:
-            # Full /research reports stay in `messages` (visible via
-            # /history, readable by '/research continue') but are excluded
-            # from ongoing chat context -- they can be thousands of tokens,
-            # and resending one on every later "hi"-style turn burns tokens
             # for no benefit to a plain chat reply.
             name = m.get("name") if isinstance(m, dict) else getattr(m, "name", None)
             if name == "writer_agent":
                 continue
 
             if hasattr(m, "content") and isinstance(m.content, list):
-                text_content = "".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in m.content)
+                text_content = "".join(
+                    b.get("text", "") if isinstance(b, dict) else str(b)
+                    for b in m.content
+                )
                 formatted_messages.append(type(m)(content=text_content))
             elif isinstance(m, dict) and isinstance(m.get("content"), list):
-                text_content = "".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in m["content"])
+                text_content = "".join(
+                    b.get("text", "") if isinstance(b, dict) else str(b)
+                    for b in m["content"]
+                )
                 formatted_messages.append({**m, "content": text_content})
             else:
                 formatted_messages.append(m)
 
         response = await tool_enabled_llm.ainvoke([sys_msg] + formatted_messages)
-        
+
         logger.debug("Content: %s", response.content)
         logger.debug("Tool Calls: %s", response.tool_calls)
-        
-        state_update = {
-            "messages": [response]
-        }
-        
+
+        state_update = {"messages": [response]}
+
         if hasattr(response, "tool_calls"):
             for tc in response.tool_calls:
                 if tc["name"] == "save_preference":
@@ -72,7 +73,7 @@ def create_chatbot_node(
                     if "user_preferences" not in state_update:
                         state_update["user_preferences"] = {}
                     state_update["user_preferences"][key] = val
-                    
+
         return state_update
 
     return chatbot_node
@@ -86,11 +87,13 @@ def create_refiner_node(
     ):
         messages = state["messages"]
         from langchain_core.messages import SystemMessage
-        
-        system_prompt = SystemMessage(content="You are an expert assistant and editor. Based on the conversation history and any tool results, provide a clear, accurate, and highly polished final answer. Do not repeat words endlessly. Stop when your thought is complete.")
-        
+
+        system_prompt = SystemMessage(
+            content="You are an expert assistant and editor. Based on the conversation history and any tool results, provide a clear, accurate, and highly polished final answer. Do not repeat words endlessly. Stop when your thought is complete."
+        )
+
         prompt = [system_prompt] + messages
-        
+
         response = await llm.ainvoke(prompt)
         logger.debug("Refined Content: %s", response.content)
         return {
