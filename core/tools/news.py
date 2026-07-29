@@ -15,6 +15,24 @@ from config.settings import settings
 from shared.logger import logger
 
 
+def _format_results(results: dict) -> str:
+    """Extract just title/content/url per result -- the raw response also
+    wraps this in query echo, follow_up_questions, images, response_time,
+    request_id, and a per-result relevance score, none of which a research
+    agent uses but which still cost tokens to carry around."""
+    items = results.get("results") or []
+    if not items:
+        return "No results found."
+
+    lines = []
+    for item in items:
+        title = item.get("title", "")
+        content = item.get("content", "")
+        url = item.get("url", "")
+        lines.append(f"- {title}\n  {content}\n  Source: {url}")
+    return "\n".join(lines)
+
+
 @tool(
     "get_news",
     description="Get the latest news for a given topic.",
@@ -35,7 +53,7 @@ async def get_news(topic: str):
 
         logger.debug("News tool executed for %s", topic)
 
-        return str(results)
+        return _format_results(results)
 
     except Exception as e:
         logger.exception("News tool failed")

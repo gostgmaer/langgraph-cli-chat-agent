@@ -7,7 +7,6 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 
 from core.graph.nodes import create_chatbot_node
 from core.graph.research.graph import ResearchGraphBuilder
-from core.graph.research.state import ResearchState
 from core.llm.manager import LLMManager
 from core.tools.news import get_news
 from core.tools.search import get_google_search
@@ -50,7 +49,8 @@ def router_node(state: State) -> dict:
         text_content = str(content).strip()
 
     if text_content.startswith("/research "):
-        topic = text_content[len("/research "):].strip()
+        raw_topic = text_content[len("/research "):].strip()
+        topic = _resolve_research_topic(raw_topic, state)
         return {
             "intent": "research",
             "question": topic,
@@ -62,6 +62,50 @@ def router_node(state: State) -> dict:
             "final_answer": "",
         }
     return {"intent": "chat"}
+
+
+_CONTINUE_PREFIXES = ("continue", "follow up", "follow-up")
+
+
+def _matches_continue_prefix(lowered_topic: str, prefix: str) -> bool:
+    """True only if `prefix` is a whole leading word/phrase, not just a
+    string prefix -- otherwise "continued fractions" would match "continue"."""
+    if not lowered_topic.startswith(prefix):
+        return False
+    rest = lowered_topic[len(prefix):]
+    return rest == "" or not rest[0].isalnum()
+
+
+def _resolve_research_topic(raw_topic: str, state: State) -> str:
+    """'/research continue [focus]' builds on the previous research in this
+    thread instead of treating "continue" as a literal new topic -- reads
+    the prior question/final_answer from state (still the previous run's
+    values here, since this node's own update hasn't been applied yet)."""
+    lowered = raw_topic.lower()
+    matched_prefix = next(
+        (p for p in _CONTINUE_PREFIXES if _matches_continue_prefix(lowered, p)), None
+    )
+    if matched_prefix is None:
+        return raw_topic
+
+    prev_question = state.get("question", "")
+    prev_answer = state.get("final_answer", "")
+    if not prev_answer:
+        # Nothing to continue from yet -- fall back to the literal topic.
+        return raw_topic
+
+    extra_focus = raw_topic[len(matched_prefix):].strip(" :,-")
+    follow_up_instruction = (
+        f"Focus the follow-up research specifically on: {extra_focus}"
+        if extra_focus
+        else "Identify gaps, open questions, or under-explored angles in the "
+        "previous findings and research those further."
+    )
+    return (
+        f"Continue and deepen the previous research on: {prev_question}\n\n"
+        f"Previous findings:\n{prev_answer}\n\n"
+        f"{follow_up_instruction}"
+    )
 
 
 def route_decision(state: State) -> Literal["chatbot", "research_team"]:

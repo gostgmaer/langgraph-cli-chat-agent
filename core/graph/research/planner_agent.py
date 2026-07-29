@@ -12,9 +12,14 @@ from shared.logger import logger
 def create_planner_agent(llm: LLMManager):
     def planner_agent(
         state: ResearchState,
-    ) -> Command[Literal["dispatch_search", "supervisor"]]:
-        """Breaks the main question into sub-questions, then pauses for human
-        review (approve / reject / modify) before handing off to parallel search."""
+    ) -> Command[Literal["plan_review"]]:
+        """Breaks the main question into sub-questions with one LLM call,
+        then hands off to plan_review for human approval. Kept as its own
+        node (rather than calling interrupt() here directly) because
+        LangGraph reruns an interrupted node from the top on every resume --
+        putting the expensive LLM call before interrupt() would re-invoke it
+        (and could silently swap out the plan the user already approved) on
+        every approve/reject/modify resume."""
         q = state.get("question", "")
         if isinstance(q, list):
             q = "".join(str(item) for item in q)
@@ -58,26 +63,37 @@ def create_planner_agent(llm: LLMManager):
                 "Planner agent failed to generate sub-questions; falling back to the original question."
             )
 
-        decision = (
-            interrupt({"type": "plan_review", "question": q, "sub_questions": questions})
-            or {}
-        )
-        action = decision.get("action", "approve")
-
-        if action == "reject":
-            return Command(
-                update={"final_answer": "Research cancelled by the user before execution."},
-                goto="supervisor",
-            )
-
-        if action == "modify":
-            modified = decision.get("sub_questions")
-            if isinstance(modified, list) and modified:
-                questions = [str(sq) for sq in modified]
-
-        return Command(update={"sub_questions": questions}, goto="dispatch_search")
+        return Command(update={"question": q, "sub_questions": questions}, goto="plan_review")
 
     return planner_agent
+
+
+def plan_review(state: ResearchState) -> Command[Literal["dispatch_search", "supervisor"]]:
+    """Pauses for human review (approve / reject / modify) of the plan
+    planner_agent already generated, then hands off to parallel search.
+    Deliberately does no LLM work of its own -- rerunning this node from the
+    top on resume just re-reads the already-checkpointed sub_questions."""
+    q = state.get("question", "")
+    questions = state.get("sub_questions") or [q]
+
+    decision = (
+        interrupt({"type": "plan_review", "question": q, "sub_questions": questions})
+        or {}
+    )
+    action = decision.get("action", "approve")
+
+    if action == "reject":
+        return Command(
+            update={"final_answer": "Research cancelled by the user before execution."},
+            goto="supervisor",
+        )
+
+    if action == "modify":
+        modified = decision.get("sub_questions")
+        if isinstance(modified, list) and modified:
+            questions = [str(sq) for sq in modified]
+
+    return Command(update={"sub_questions": questions}, goto="dispatch_search")
 
 
 def dispatch_search(state: ResearchState) -> Command[Literal["search_agent"]]:

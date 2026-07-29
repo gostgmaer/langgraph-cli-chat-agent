@@ -1,6 +1,5 @@
 from typing import Literal
 
-from langchain_core.messages import HumanMessage
 from langgraph.types import Command
 
 from core.graph.research.state import ResearchState
@@ -44,11 +43,11 @@ def create_writer_agent(llm: LLMManager):
                 "Here is the raw research summary instead:\n\n" + str(findings)
             )
 
+        # Not appended to `messages` here -- the draft may still be revised
+        # by reviewer_agent. supervisor appends the one clean final answer
+        # to `messages` once the whole research run actually completes.
         return Command(
-            update={
-                "draft": draft,
-                "messages": [HumanMessage(content=draft, name="writer_agent")],
-            },
+            update={"draft": draft},
             goto="supervisor",
         )
 

@@ -1,4 +1,5 @@
 from typing import Literal
+from langchain_core.messages import AIMessage
 from langgraph.types import Command
 from langgraph.graph import END
 from core.graph.research.state import ResearchState
@@ -21,8 +22,12 @@ def supervisor(
 
     # 2. Budget Guard — too many revisions
     if revision_count > MAX_REVISIONS:
+        answer = draft or "Research completed (max revisions reached)."
         return Command(
-            update={"final_answer": draft or "Research completed (max revisions reached)."},
+            update={
+                "final_answer": answer,
+                "messages": [AIMessage(content=answer, name="writer_agent")],
+            },
             goto=END,
         )
 
@@ -42,6 +47,7 @@ def supervisor(
     return Command(
         update={
             "final_answer": draft,
+            "messages": [AIMessage(content=draft, name="writer_agent")],
             "search_results": [],
             "sub_questions": [],
             "draft": "",

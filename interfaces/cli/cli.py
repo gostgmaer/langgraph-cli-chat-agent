@@ -70,49 +70,22 @@ class CLI:
                     if is_research
                     else "Thinking..."
                 )
-
-                first_token = True
-                status = self._renderer.status(status_text)
-                status.start()
-
-                try:
-                    async for token in self._chat_service.stream_chat(user_message):
-                        if first_token:
-                            status.stop()
-                            self._renderer.start_assistant_message()
-                            first_token = False
-                        self._renderer.stream_token(token)
-                finally:
-                    if first_token:
-                        status.stop()
-                        self._renderer.start_assistant_message()
-
-                self._renderer.finish_assistant_message()
+                await self._consume_stream(
+                    self._chat_service.stream_chat(user_message), status_text
+                )
 
                 # Human-in-the-loop: the research planner pauses for plan
                 # approval before dispatching parallel searches. Keep
+                # resuming (which may itself pause again, e.g. after a
+                # rejection produces a final answer with no further pause)
+                # until the graph is no longer paused.
                 pending = await self._chat_service.get_pending_interrupt()
                 while pending:
                     resume_value = await self._review_plan(pending)
-
-                    status = self._renderer.status(
-                        "Researching... (This may take a minute)"
+                    await self._consume_stream(
+                        self._chat_service.resume_chat(resume_value),
+                        "Researching... (This may take a minute)",
                     )
-                    status.start()
-                    first_token = True
-                    try:
-                        async for token in self._chat_service.resume_chat(resume_value):
-                            if first_token:
-                                status.stop()
-                                self._renderer.start_assistant_message()
-                                first_token = False
-                            self._renderer.stream_token(token)
-                    finally:
-                        if first_token:
-                            status.stop()
-                            self._renderer.start_assistant_message()
-                    self._renderer.finish_assistant_message()
-
                     pending = await self._chat_service.get_pending_interrupt()
 
                 self._renderer.separator()
@@ -122,6 +95,44 @@ class CLI:
                 break
             except Exception as error:
                 self._renderer.print_error(str(error))
+
+    async def _consume_stream(self, chunk_iter, status_text: str) -> None:
+        """Render a stream of StreamChunk events: step announcements are
+        printed as status lines, tokens are rendered as a live assistant
+        message. A spinner covers the gap before the first event arrives."""
+        status = self._renderer.status(status_text)
+        status.start()
+        status_running = True
+        live_open = False
+        try:
+            async for chunk in chunk_iter:
+                if status_running:
+                    status.stop()
+                    status_running = False
+
+                if chunk.type == "step":
+                    if live_open:
+                        self._renderer.finish_assistant_message()
+                        live_open = False
+                    self._renderer.print_step(chunk.content)
+                    continue
+
+                if chunk.type == "usage":
+                    if live_open:
+                        self._renderer.finish_assistant_message()
+                        live_open = False
+                    self._renderer.print_usage(chunk.content)
+                    continue
+
+                if not live_open:
+                    self._renderer.start_assistant_message()
+                    live_open = True
+                self._renderer.stream_token(chunk.content)
+        finally:
+            if status_running:
+                status.stop()
+            if live_open:
+                self._renderer.finish_assistant_message()
 
     async def _review_plan(self, payload: dict) -> dict:
         """Show the planner's proposed sub-questions and ask the user to

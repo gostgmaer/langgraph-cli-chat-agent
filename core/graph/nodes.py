@@ -37,6 +37,15 @@ def create_chatbot_node(
         
         formatted_messages = []
         for m in messages:
+            # Full /research reports stay in `messages` (visible via
+            # /history, readable by '/research continue') but are excluded
+            # from ongoing chat context -- they can be thousands of tokens,
+            # and resending one on every later "hi"-style turn burns tokens
+            # for no benefit to a plain chat reply.
+            name = m.get("name") if isinstance(m, dict) else getattr(m, "name", None)
+            if name == "writer_agent":
+                continue
+
             if hasattr(m, "content") and isinstance(m.content, list):
                 text_content = "".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in m.content)
                 formatted_messages.append(type(m)(content=text_content))

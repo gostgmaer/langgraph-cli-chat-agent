@@ -104,6 +104,26 @@ class CLIRenderer:
         self.console.print(f"[dim]{args}[/dim]")
 
     # ------------------------------------------------------------------
+    # Graph Step Visibility
+    # ------------------------------------------------------------------
+
+    def print_step(
+        self,
+        label: str,
+    ) -> None:
+        """Show a single graph node's execution as a lightweight status
+        line, so the user can follow what the system is doing step by
+        step (routing, planning, searching, reviewing, etc.)."""
+        self.console.print(f"[dim cyan]  → {label}[/dim cyan]")
+
+    def print_usage(
+        self,
+        summary: str,
+    ) -> None:
+        """Show token-usage totals for a completed turn."""
+        self.console.print(f"[dim yellow]{summary}[/dim yellow]")
+
+    # ------------------------------------------------------------------
     # Session
     # ------------------------------------------------------------------
 

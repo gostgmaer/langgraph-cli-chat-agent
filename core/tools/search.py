@@ -16,7 +16,27 @@ from langchain_community.utilities import GoogleSerperAPIWrapper
 
 from shared import logger
 
-search = GoogleSerperAPIWrapper(serper_api_key=settings.serper_api_key)
+# k=5 -- the raw API defaults to 10 results; the extra 5 rarely add
+# information a research agent needs and just cost tokens to carry around.
+search = GoogleSerperAPIWrapper(serper_api_key=settings.serper_api_key, k=5)
+
+
+def _format_results(res: dict) -> str:
+    """Extract just title/link/snippet per result -- the raw response also
+    includes searchParameters, credits, position, relatedSearches, etc.,
+    none of which a research agent uses but which roughly triple the token
+    cost of every search call."""
+    organic = res.get("organic") or []
+    if not organic:
+        return "No results found."
+
+    lines = []
+    for item in organic:
+        title = item.get("title", "")
+        link = item.get("link", "")
+        snippet = item.get("snippet", "")
+        lines.append(f"- {title}\n  {snippet}\n  Source: {link}")
+    return "\n".join(lines)
 
 
 @tool(
@@ -37,7 +57,7 @@ def get_google_search(topic: str) -> str:
 
     try:
         res = search.results(query=topic)
-        return str(res)
+        return _format_results(res)
     except Exception as e:
         logger.exception("Google search tool failed")
         return f"Unable to reach the search service: {e}"
