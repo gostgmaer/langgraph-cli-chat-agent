@@ -7,6 +7,7 @@ from core.llm.manager import LLMManager
 from core.tools.search import get_google_search
 from core.tools.news import get_news
 from shared.logger import logger
+from utils.retries import async_retry
 
 search_tools = [get_google_search, get_news]
 # allows one refinement search if the first attempt comes back empty.
@@ -34,7 +35,7 @@ def create_search_agent(llm: LLMManager):
             response = None
 
             for _ in range(MAX_TOOL_ROUNDS + 1):
-                response = await llm_with_tools.ainvoke(history)
+                response = await async_retry(llm_with_tools.ainvoke, history)
                 calls = getattr(response, "tool_calls", []) or []
                 if not calls:
                     break

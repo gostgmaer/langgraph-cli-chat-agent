@@ -3,6 +3,7 @@ from langchain_core.messages import AIMessage
 from langchain_core.tools import BaseTool
 from core.graph.state import GraphState
 from core.llm.manager import LLMManager
+from utils.retries import async_retry
 
 
 def create_chatbot_node(
@@ -58,7 +59,9 @@ def create_chatbot_node(
             else:
                 formatted_messages.append(m)
 
-        response = await tool_enabled_llm.ainvoke([sys_msg] + formatted_messages)
+        response = await async_retry(
+            tool_enabled_llm.ainvoke, [sys_msg] + formatted_messages
+        )
 
         logger.debug("Content: %s", response.content)
         logger.debug("Tool Calls: %s", response.tool_calls)
@@ -94,7 +97,7 @@ def create_refiner_node(
 
         prompt = [system_prompt] + messages
 
-        response = await llm.ainvoke(prompt)
+        response = await async_retry(llm.ainvoke, prompt)
         logger.debug("Refined Content: %s", response.content)
         return {
             "messages": [

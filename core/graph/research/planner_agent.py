@@ -8,6 +8,7 @@ from core.graph.research.prompts import PLLANER_PROMPT, current_date_context
 from core.graph.research.state import ResearchState
 from core.llm.manager import LLMManager
 from shared.logger import logger
+from utils.retries import with_retry
 
 def create_planner_agent(llm: LLMManager):
     def planner_agent(
@@ -26,7 +27,7 @@ def create_planner_agent(llm: LLMManager):
 
         questions = [q]
         try:
-            raw = llm.model.invoke(PLLANER_PROMPT(q))
+            raw = with_retry(max_attempts=2)(llm.model.invoke)(PLLANER_PROMPT(q))
             if isinstance(raw.content, list):
                 raw_text = "".join(
                     b.get("text", "") if isinstance(b, dict) else str(b)

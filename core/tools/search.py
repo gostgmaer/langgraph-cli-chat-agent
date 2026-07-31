@@ -14,7 +14,8 @@ from langchain_core.tools import tool
 from config.settings import settings
 from langchain_community.utilities import GoogleSerperAPIWrapper
 
-from shared import logger
+from shared.logger import logger
+from utils.retries import with_retry
 
 # k=5 -- the raw API defaults to 10 results; the extra 5 rarely add
 # information a research agent needs and just cost tokens to carry around.
@@ -56,7 +57,7 @@ def get_google_search(topic: str) -> str:
     """
 
     try:
-        res = search.results(query=topic)
+        res = with_retry(max_attempts=2)(search.results)(query=topic)
         return _format_results(res)
     except Exception as e:
         logger.exception("Google search tool failed")

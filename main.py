@@ -1,4 +1,5 @@
 import asyncio
+import os
 
 from config.settings import settings
 from core.bootstrap import create_chat_service, render_startup_diagrams
@@ -7,9 +8,31 @@ from core.graph.checkpointer import Checkpointer
 
 from interfaces.cli.cli import CLI
 from interfaces.cli.renderer import CLIRenderer
+from shared.logger import logger
+
+
+def _configure_tracing() -> None:
+    """LangChain/LangSmith tracing activates by reading os.environ directly
+    -- so tracing never actually turns on regardless of config."""
+    if not settings.langchain_tracing:
+        return
+    if not settings.langchain_api_key:
+        logger.warning(
+            "LANGCHAIN_TRACING_V2 is enabled but LANGCHAIN_API_KEY is missing -- "
+            "tracing will not be activated."
+        )
+        return
+
+    os.environ["LANGCHAIN_TRACING_V2"] = "true"
+    os.environ["LANGCHAIN_ENDPOINT"] = settings.langchain_endpoint
+    os.environ["LANGCHAIN_API_KEY"] = settings.langchain_api_key
+    os.environ["LANGCHAIN_PROJECT"] = settings.langchain_project
+    logger.info("LangSmith tracing enabled for project '%s'.", settings.langchain_project)
 
 
 async def main() -> None:
+    _configure_tracing()
+
     await init_database()
 
     async with AsyncSessionLocal() as db_session:

@@ -13,6 +13,7 @@ from langchain.tools import tool
 
 from config.settings import settings
 from shared.logger import logger
+from utils.retries import with_retry
 
 
 def _format_results(results: dict) -> str:
@@ -49,7 +50,9 @@ async def get_news(topic: str):
             tavily_api_key=settings.tavily_api_key,
         )
 
-        results = search.invoke({"query": f"Latest news about {topic}"})
+        results = with_retry(max_attempts=2)(search.invoke)(
+            {"query": f"Latest news about {topic}"}
+        )
 
         logger.debug("News tool executed for %s", topic)
 

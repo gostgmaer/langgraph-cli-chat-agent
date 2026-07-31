@@ -15,6 +15,7 @@ import httpx
 
 from config.settings import settings
 from shared.logger import logger
+from utils.retries import async_retry
 
 client = httpx.AsyncClient(timeout=10)
 
@@ -51,7 +52,8 @@ async def get_weather(city: str):
     if not settings.weather_api_key:
         return "Weather API key is missing."
     logger.debug("Weather tool executed for %s", city)
-    try:
+
+    async def _fetch() -> httpx.Response:
         response = await client.get(
             f"{settings.weather_api_url}/weather",
             params={
@@ -60,8 +62,11 @@ async def get_weather(city: str):
                 "units": "metric",
             },
         )
-
         response.raise_for_status()
+        return response
+
+    try:
+        response = await async_retry(_fetch, max_attempts=2)
         data = response.json()
         logger.debug("Weather tool executed for %s", city)
         logger.debug(f"Weather data for {city}: {data}")

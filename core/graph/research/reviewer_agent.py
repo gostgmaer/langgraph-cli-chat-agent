@@ -6,6 +6,7 @@ from langgraph.types import Command
 from core.graph.research.state import ResearchState
 from core.llm.manager import LLMManager
 from shared.logger import logger
+from utils.retries import with_retry
 
 MAX_REVISIONS = 2
 
@@ -25,7 +26,7 @@ def create_reviewer_agent(llm: LLMManager):
 
         try:
             # Use plain LLM with explicit JSON instruction to avoid raw JSON leaking into state messages
-            raw = llm.model.invoke(
+            raw = with_retry(max_attempts=2)(llm.model.invoke)(
                 f"Research findings:\n{findings}\n\nDraft answer:\n{draft}\n\n"
                 f"Reply ONLY with a JSON object: {{\"is_consistent\": true/false, \"issues\": [\"list of issues if any\"]}}.\n"
                 f"Set is_consistent=true if draft is fully supported. Set false and list issues if not."
