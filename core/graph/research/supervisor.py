@@ -9,7 +9,9 @@ MAX_REVISIONS = 2
 
 def supervisor(
     state: ResearchState,
-) -> Command[Literal["planner_agent", "writer_agent", "reviewer_agent", "__end__"]]:
+) -> Command[
+    Literal["planner_agent", "assess_coverage", "writer_agent", "reviewer_agent", "__end__"]
+]:
     """Production supervisor with step budgets, parallel search routing, and reviewer loop."""
     revision_count = state.get("revision_count", 0)
     search_results = state.get("search_results") or []
@@ -27,6 +29,8 @@ def supervisor(
             update={
                 "final_answer": answer,
                 "messages": [AIMessage(content=answer, name="writer_agent")],
+                "pending_questions": [],
+                "research_rounds": 0,
             },
             goto=END,
         )
@@ -35,9 +39,11 @@ def supervisor(
     if not search_results:
         return Command(goto="planner_agent")
 
-    # 4. Have results but no draft yet — write
+    # 4. Have results but no draft yet -- check for coverage gaps before
+    # writing (assess_coverage itself decides whether to loop back for one
+    # more targeted search round or proceed straight to writer_agent).
     if search_results and not draft:
-        return Command(goto="writer_agent")
+        return Command(goto="assess_coverage")
 
     # 5. Have draft, not yet reviewed (revision_count == 0 means no review has happened)
     if draft and revision_count == 0:
@@ -50,6 +56,8 @@ def supervisor(
             "messages": [AIMessage(content=draft, name="writer_agent")],
             "search_results": [],
             "sub_questions": [],
+            "pending_questions": [],
+            "research_rounds": 0,
             "draft": "",
             "revision_count": 0,
         },

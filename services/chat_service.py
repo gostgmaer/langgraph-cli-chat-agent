@@ -1,5 +1,8 @@
+import re
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
 from typing import Any, Literal
 
 from langchain.messages import HumanMessage
@@ -27,9 +30,33 @@ STEP_LABELS: dict[str, str] = {
     "plan_review": "⏸️ Awaiting your plan review",
     "dispatch_search": "📤 Dispatching parallel searches",
     "search_agent": "🔍 Searching",
+    "assess_coverage": "🧩 Assessing research coverage",
     "writer_agent": "✍️ Writing answer",
     "reviewer_agent": "🔎 Reviewing for accuracy",
 }
+
+REPORTS_DIR = Path("research_reports")
+
+
+def _save_research_report(question: str, text: str) -> str | None:
+    """Save a completed research answer to a plain text file. Best-effort --
+    a save failure (e.g. permissions) must not break the research turn
+    itself, so failures are logged and swallowed."""
+    try:
+        REPORTS_DIR.mkdir(exist_ok=True)
+        slug = re.sub(r"[^a-z0-9]+", "-", question.lower()).strip("-")[:60] or "research"
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        path = REPORTS_DIR / f"{timestamp}_{slug}.txt"
+        content = (
+            f"# {question}\n\n"
+            f"_Generated {datetime.now().isoformat(timespec='seconds')}_\n\n"
+            f"{text}\n"
+        )
+        path.write_text(content, encoding="utf-8")
+        return str(path)
+    except Exception:
+        logger.exception("Failed to save research report to disk.")
+        return None
 
 
 @dataclass
@@ -203,9 +230,23 @@ class ChatService:
                     yield StreamChunk(
                         type="step", content="🔁 Sending draft back for revision"
                     )
+                elif node_name == "assess_coverage" and goto == "dispatch_search":
+                    announced_end_ids.add(event.get("run_id"))
+                    follow_ups = (update or {}).get("pending_questions") or []
+                    detail = f": {'; '.join(follow_ups)}" if follow_ups else ""
+                    yield StreamChunk(
+                        type="step",
+                        content=f"🔁 Coverage gap found -- researching further{detail}",
+                    )
                 elif node_name == "supervisor" and goto == END and isinstance(update, dict) and update.get("final_answer"):
                     announced_end_ids.add(event.get("run_id"))
-                    yield StreamChunk(type="step", content="✅ Final answer ready")
+                    question = (event.get("data", {}).get("input") or {}).get("question", "")
+                    final_text = update.get("final_answer", "")
+                    saved_path = _save_research_report(question, final_text)
+                    label = "✅ Final answer ready"
+                    if saved_path:
+                        label += f" (saved to {saved_path})"
+                    yield StreamChunk(type="step", content=label)
 
             if event["event"] == "on_chat_model_end":
                 usage = _extract_usage(event)

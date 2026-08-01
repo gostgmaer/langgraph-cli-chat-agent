@@ -94,11 +94,24 @@ def plan_review(state: ResearchState) -> Command[Literal["dispatch_search", "sup
         if isinstance(modified, list) and modified:
             questions = [str(sq) for sq in modified]
 
-    return Command(update={"sub_questions": questions}, goto="dispatch_search")
+    return Command(
+        update={"sub_questions": questions, "pending_questions": questions},
+        goto="dispatch_search",
+    )
 
 
 def dispatch_search(state: ResearchState) -> Command[Literal["search_agent"]]:
-    """Map step: dynamic parallel fan-out sending sub-questions to search_agent."""
-    sub_qs = state.get("sub_questions") or [state.get("question", "")]
+    """Map step: dynamic parallel fan-out sending sub-questions to search_agent.
+
+    Reads `pending_questions` (this round's work) rather than `sub_questions`
+    (the full cumulative plan) -- coverage_agent.py reuses this same node for
+    an adaptive follow-up round, and only wants to dispatch the new
+    gap-filling questions, not re-search everything from scratch.
+    """
+    sub_qs = (
+        state.get("pending_questions")
+        or state.get("sub_questions")
+        or [state.get("question", "")]
+    )
     sends = [Send("search_agent", {"question": sq, "messages": []}) for sq in sub_qs]
     return Command(goto=sends)

@@ -23,8 +23,10 @@ dependencies = [
     "langsmith>=0.10.5",
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.2",
+    "pypdf>=6.14.2",
     "python-dotenv>=1.2.2",
     "rich>=15.0.0",
     "sqlalchemy>=2.0.51",
+    "trafilatura>=2.1.0",
     "typing-extensions>=4.16.0",
 ]

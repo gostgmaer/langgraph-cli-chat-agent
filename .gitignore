@@ -52,3 +52,5 @@ data/
 
 *.log
 .claude
+research_reports
+logs

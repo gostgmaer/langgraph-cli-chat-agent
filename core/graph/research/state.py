@@ -20,8 +20,16 @@ class ResearchState(TypedDict, total=False):
     messages: Annotated[list[AnyMessage], add_messages]
     question: str
     sub_questions: list[str]
+    # The sub-questions to dispatch on the *next* round only -- separate
+    # from `sub_questions` (the full cumulative plan) so an adaptive
+    # follow-up round (see coverage_agent.py) fans out just the new
+    # gap-filling questions instead of re-searching everything again.
+    pending_questions: list[str]
     search_results: Annotated[list[str], _accumulate_search_results]
     draft: str
     revision_count: int
+    # How many adaptive follow-up search rounds have run (capped by
+    # coverage_agent.MAX_RESEARCH_ROUNDS).
+    research_rounds: int
     final_answer: str
 

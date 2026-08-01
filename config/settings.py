@@ -189,6 +189,14 @@ class Settings(BaseSettings):
         alias="TAVILY_API_KEY",
     )
 
+    # Optional -- free to register at semanticscholar.org/product/api. The
+    # academic search tool works without it (shared unauthenticated rate
+    # limit), this just raises the per-key limit.
+    semantic_scholar_api_key: str | None = Field(
+        default=None,
+        alias="SEMANTIC_SCHOLAR_API_KEY",
+    )
+
     # =====================================================
     # RAG
     # =====================================================

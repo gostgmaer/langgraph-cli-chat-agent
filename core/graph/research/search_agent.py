@@ -6,11 +6,18 @@ from core.graph.research.prompts import SEARCH_AGENT_PROMPT, current_date_contex
 from core.llm.manager import LLMManager
 from core.tools.search import get_google_search
 from core.tools.news import get_news
+from core.tools.webpage import get_page_content
+from core.tools.academic import get_academic_search
 from shared.logger import logger
 from utils.retries import async_retry
 
-search_tools = [get_google_search, get_news]
-# allows one refinement search if the first attempt comes back empty.
+search_tools = [get_google_search, get_news, get_page_content, get_academic_search]
+# Tools with a genuinely async implementation -- everything else is sync and
+# goes through tool_fn.invoke() directly.
+ASYNC_TOOL_NAMES = {"get_news", "get_page_content"}
+# 1 extra round -- typically: round 1 searches, round 2 either refines the
+# query (empty/insufficient results) or fetches the full text of the most
+# promising result via get_page_content.
 MAX_TOOL_ROUNDS = 1
 
 
@@ -45,7 +52,7 @@ def create_search_agent(llm: LLMManager):
                     tool_fn = next(t for t in search_tools if t.name == call["name"])
                     result = (
                         await tool_fn.ainvoke(call["args"])
-                        if call["name"] == "get_news"
+                        if call["name"] in ASYNC_TOOL_NAMES
                         else tool_fn.invoke(call["args"])
                     )
                     all_tool_outputs.append(f"[{call['name']}] {result}")

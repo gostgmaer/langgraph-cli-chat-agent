@@ -13,6 +13,13 @@ def mock_dispatch(state):
 def mock_search(state):
     return Command(update={"search_results": ["mocked findings"]}, goto="supervisor")
 
+def mock_coverage(state):
+    # Not actually reached by this test (it starts with a draft already
+    # present), but supervisor's own Literal return type references
+    # "assess_coverage" as a possible target, so LangGraph's graph compiler
+    # requires a registered node with that name to exist.
+    return Command(goto="writer_agent")
+
 def mock_writer(state):
     return Command(update={"draft": "mocked draft"}, goto="supervisor")
 
@@ -26,6 +33,7 @@ def build_test_graph():
     builder.add_node("planner_agent", mock_planner)
     builder.add_node("dispatch_search", mock_dispatch)
     builder.add_node("search_agent", mock_search)
+    builder.add_node("assess_coverage", mock_coverage)
     builder.add_node("writer_agent", mock_writer)
     builder.add_node("reviewer_agent", mock_reviewer)
     builder.add_edge(START, "supervisor")

@@ -26,8 +26,10 @@ class State(TypedDict, total=False):
     intent: str
     question: str
     sub_questions: Annotated[list[str], _replace_list]
+    pending_questions: Annotated[list[str], _replace_list]
     search_results: Annotated[list[str], _replace_list]
     revision_count: int
+    research_rounds: int
     draft: str
     final_answer: str
     user_preferences: Annotated[dict[str, Any], update_preferences]
@@ -56,9 +58,11 @@ def router_node(state: State) -> dict:
             "question": topic,
             # Hard-reset ALL research fields to prevent stale checkpoint state
             "sub_questions": [],
+            "pending_questions": [],
             "search_results": [],
             "draft": "",
             "revision_count": 0,
+            "research_rounds": 0,
             "final_answer": "",
         }
     return {"intent": "chat"}
