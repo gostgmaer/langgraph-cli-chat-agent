@@ -8,7 +8,26 @@ from pypdf import PdfReader
 from shared.logger import logger
 from utils.retries import async_retry
 
-client = httpx.AsyncClient(timeout=15, follow_redirects=True)
+client = httpx.AsyncClient(
+    timeout=15,
+    follow_redirects=True,
+    headers={
+        # httpx's default UA ("python-httpx/x.x") is a well-known bot
+        # signature that many sites block outright regardless of actual
+        # scraping intent. A realistic browser UA + Accept headers clears
+        # basic bot-detection (not sophisticated JS-challenge/paywall
+        # protection, which no header spoof can bypass).
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+        ),
+        "Accept": (
+            "text/html,application/xhtml+xml,application/xml;q=0.9,"
+            "application/pdf;q=0.9,*/*;q=0.8"
+        ),
+        "Accept-Language": "en-US,en;q=0.9",
+    },
+)
 
 # Bounded so one fetch can't blow the token budget of the search agent that
 # calls it -- this is meant to supplement search snippets with the most
@@ -37,10 +56,11 @@ def _extract_pdf_text(content: bytes) -> str:
     "get_page_content",
     description=(
         "Fetch and read the full text of a specific web page or PDF URL, "
-        "e.g. one returned by get_google_search. Use only when a search "
-        "snippet suggests a source has important detail not captured in "
-        "the snippet -- expensive, so use sparingly (at most once or twice "
-        "per sub-question)."
+        "e.g. one returned by get_google_search. Use this routinely for "
+        "your 1-2 most promising sources per sub-question to get real "
+        "depth beyond a search snippet -- not just as a last resort. Some "
+        "sites (paywalled/bot-protected) will fail to fetch; that's "
+        "expected, fall back to the snippet for those."
     ),
     return_direct=False,
 )

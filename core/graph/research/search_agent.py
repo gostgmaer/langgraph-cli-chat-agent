@@ -15,10 +15,8 @@ search_tools = [get_google_search, get_news, get_page_content, get_academic_sear
 # Tools with a genuinely async implementation -- everything else is sync and
 # goes through tool_fn.invoke() directly.
 ASYNC_TOOL_NAMES = {"get_news", "get_page_content"}
-# 1 extra round -- typically: round 1 searches, round 2 either refines the
-# query (empty/insufficient results) or fetches the full text of the most
-# promising result via get_page_content.
-MAX_TOOL_ROUNDS = 1
+# 2 extra rounds -- the expected flow is now: round 1 searches, round 2
+MAX_TOOL_ROUNDS = 2
 
 
 def _extract_text(content) -> str:
