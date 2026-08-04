@@ -8,6 +8,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from core.graph.nodes import create_chatbot_node
 from core.graph.research.graph import ResearchGraphBuilder
 from core.llm.manager import LLMManager
+from core.tools.ddgs import web_search
 from core.tools.news import get_news
 from core.tools.search import get_google_search
 from core.tools.weather import get_weather
@@ -134,7 +135,7 @@ class GraphBuilder:
         builder = StateGraph(State)
 
         # 3. Add Nodes
-        tools = [get_weather, get_google_search, get_news, save_preference]
+        tools = [get_weather,web_search, get_google_search, get_news, save_preference]
         builder.add_node("router", router_node)
         builder.add_node("chatbot", create_chatbot_node(self._llm, tools))
         builder.add_node("tools", ToolNode(tools))

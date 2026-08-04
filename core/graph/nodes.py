@@ -26,6 +26,7 @@ def create_chatbot_node(
                 "exactly these tools, nothing more -- if asked what you can do, describe "
                 "these truthfully rather than inventing other skills or personas:\n"
                 "- get_weather: current weather for a city\n"
+                "- web_search: search the web using DuckDuckGo\n"
                 "- get_google_search: general web search\n"
                 "- get_news: recent news on a topic\n"
                 "- save_preference: remember a user preference (name, language, etc.)\n"

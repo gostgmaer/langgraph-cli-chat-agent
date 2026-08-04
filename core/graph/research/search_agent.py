@@ -4,6 +4,7 @@ from langgraph.types import Command
 from core.graph.research.state import ResearchState
 from core.graph.research.prompts import SEARCH_AGENT_PROMPT, current_date_context
 from core.llm.manager import LLMManager
+from core.tools.ddgs import web_search
 from core.tools.search import get_google_search
 from core.tools.news import get_news
 from core.tools.webpage import get_page_content
@@ -11,7 +12,13 @@ from core.tools.academic import get_academic_search
 from shared.logger import logger
 from utils.retries import async_retry
 
-search_tools = [get_google_search, get_news, get_page_content, get_academic_search]
+search_tools = [
+    web_search,
+    get_google_search,
+    get_news,
+    get_page_content,
+    get_academic_search,
+]
 # Tools with a genuinely async implementation -- everything else is sync and
 # goes through tool_fn.invoke() directly.
 ASYNC_TOOL_NAMES = {"get_news", "get_page_content"}
@@ -21,7 +28,9 @@ MAX_TOOL_ROUNDS = 2
 
 def _extract_text(content) -> str:
     if isinstance(content, list):
-        return "".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in content)
+        return "".join(
+            b.get("text", "") if isinstance(b, dict) else str(b) for b in content
+        )
     return str(content)
 
 
@@ -31,7 +40,10 @@ def create_search_agent(llm: LLMManager):
     async def search_agent(state: ResearchState) -> Command[Literal["supervisor"]]:
         question = state["question"]
         history = [
-            {"role": "system", "content": f"{SEARCH_AGENT_PROMPT}\n\n{current_date_context()}"},
+            {
+                "role": "system",
+                "content": f"{SEARCH_AGENT_PROMPT}\n\n{current_date_context()}",
+            },
             {"role": "user", "content": question},
         ]
 
@@ -55,10 +67,16 @@ def create_search_agent(llm: LLMManager):
                     )
                     all_tool_outputs.append(f"[{call['name']}] {result}")
                     history = history + [
-                        {"role": "tool", "tool_call_id": call["id"], "content": str(result)}
+                        {
+                            "role": "tool",
+                            "tool_call_id": call["id"],
+                            "content": str(result),
+                        }
                     ]
 
-            summary = _extract_text(response.content if response is not None else "").strip()
+            summary = _extract_text(
+                response.content if response is not None else ""
+            ).strip()
 
             if not summary and all_tool_outputs:
                 summary = "\n".join(all_tool_outputs)

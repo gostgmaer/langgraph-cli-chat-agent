@@ -26,6 +26,7 @@ You ONLY gather evidence.
 
 Available Tools
 ---------------
+- web_search:for web search best result
 - get_google_search: general web search
 - get_news: recent news search
 - get_academic_search: peer-reviewed / preprint papers (arXiv and most

@@ -56,7 +56,7 @@ def _extract_pdf_text(content: bytes) -> str:
     "get_page_content",
     description=(
         "Fetch and read the full text of a specific web page or PDF URL, "
-        "e.g. one returned by get_google_search. Use this routinely for "
+        "e.g. one returned by get_google_search or web_search. Use this routinely for "
         "your 1-2 most promising sources per sub-question to get real "
         "depth beyond a search snippet -- not just as a last resort. Some "
         "sites (paywalled/bot-protected) will fail to fetch; that's "
