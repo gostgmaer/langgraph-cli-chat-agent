@@ -5,7 +5,7 @@ from langchain_core.messages import AnyMessage, HumanMessage
 from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
-from core.graph.nodes import create_chatbot_node
+from core.graph.nodes import create_chatbot_node, create_finalise_node
 from core.graph.research.graph import ResearchGraphBuilder
 from core.llm.manager import LLMManager
 from core.tools.ddgs import web_search
@@ -119,6 +119,8 @@ def route_decision(state: State) -> Literal["chatbot", "research_team"]:
     return "chatbot"
 
 
+
+
 class GraphBuilder:
     """Builds a single master graph combining Router, Chatbot, Tools, and Research Subgraph."""
 
@@ -135,19 +137,25 @@ class GraphBuilder:
         builder = StateGraph(State)
 
         # 3. Add Nodes
-        tools = [get_weather,web_search, get_google_search, get_news, save_preference]
+        tools = [get_weather, web_search, get_google_search, get_news, save_preference]
+
         builder.add_node("router", router_node)
         builder.add_node("chatbot", create_chatbot_node(self._llm, tools))
         builder.add_node("tools", ToolNode(tools))
+        builder.add_node("finalise", create_finalise_node(self._llm))
         builder.add_node("research_team", research_team_subgraph)
 
         # 4. Add Edges & Conditional Routing
         builder.add_edge(START, "router")
         builder.add_conditional_edges("router", route_decision)
 
-        # Single-Agent Chat Branch
+        # Chat branch:
+        #   chatbot → tools → finalise → END   (when tools are called)
+        #   chatbot → END                       (when no tools needed)
+        # finalise uses a plain LLM (no tools bound) so it cannot loop.
         builder.add_conditional_edges("chatbot", tools_condition)
-        builder.add_edge("tools", "chatbot")
+        builder.add_edge("tools", "finalise")
+        builder.add_edge("finalise", END)
 
         # Multi-Agent Research Subgraph Branch
         builder.add_edge("research_team", END)

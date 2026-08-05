@@ -24,6 +24,7 @@ STEP_LABELS: dict[str, str] = {
     "router": "🧭 Routing your message",
     "chatbot": "🤖 Thinking",
     "tools": "🛠️ Running tools",
+    "finalise": "✍️ Composing answer",
     "research_team": "🧪 Starting research team",
     "supervisor": "🧠 Supervisor deciding next step",
     "planner_agent": "📝 Planning research sub-questions",
@@ -128,7 +129,10 @@ class ChatService:
 
     async def _resolve_config(self) -> dict:
         session = await self._session_manager.get_or_create()
-        return {"configurable": {"thread_id": str(session.id)}}
+        return {
+            "configurable": {"thread_id": str(session.id)},
+            "recursion_limit": 10,
+        }
 
     async def get_history(self) -> list[BaseMessage]:
         """Return the message history for the current session's thread."""
@@ -256,7 +260,11 @@ class ChatService:
                     usage_totals["total_tokens"] += usage.get("total_tokens") or 0
 
             if event["event"] == "on_chat_model_stream":
-                if node_name not in ["chatbot", "writer_agent"]:
+                if node_name not in ["chatbot", "finalise", "writer_agent"]:
+                    continue
+                # Skip tokens produced by the intent-classifier call so that
+                # "CHAT" / "TOOLS" never leaks into the streamed output.
+                if event.get("name") == "intent_classifier":
                     continue
                 chunk = event["data"]["chunk"]
                 if isinstance(chunk.content, str) and chunk.content:
